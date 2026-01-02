@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Negative Event Density Index (NEDI)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0"></script>
+    <style>
+        :root { --danger: #e11d48; --safe: #10b981; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; }
+        body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .card { background: var(--card); padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid #334155; position: relative; }
+        .controls { display: flex; gap: 15px; align-items: center; justify-content: center; flex-wrap: wrap; margin-bottom: 10px; }
+        .toggle-group { display: flex; gap: 15px; align-items: center; background: #0f172a; padding: 10px 20px; border-radius: 30px; border: 1px solid #475569; }
+        .toggle-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #94a3b8; cursor: pointer; }
+        input[type="number"] { padding: 8px; background: #0f172a; border: 1px solid #475569; border-radius: 6px; color: white; width: 80px; }
+        
+        button { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; color: white; }
+        .btn-run { background: var(--danger); }
+        .btn-secondary { background: #475569; display: none; margin-left: 5px; }
+        .btn-about { background: transparent; border: 1px solid #475569; color: #94a3b8; margin-bottom: 10px; }
+        button:hover { opacity: 0.8; }
+
+        /* Modal Styles */
+        #aboutModal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(5px); }
+        .modal-content { background: var(--card); margin: 5% auto; padding: 2.5rem; border: 1px solid #334155; width: 80%; max-width: 700px; border-radius: 15px; line-height: 1.6; }
+        .close-btn { float: right; cursor: pointer; font-size: 1.5rem; color: #94a3b8; }
+        
+        #progressContainer { width: 100%; background: #0f172a; height: 6px; border-radius: 10px; margin-top: 15px; display: none; overflow: hidden; }
+        #progressBar { width: 0%; height: 100%; background: linear-gradient(90deg, #fb7185, #e11d48); transition: width 0.3s ease; }
+        
+        .chart-box { height: 450px; }
+        .event-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+        .event-card { background: #1e293b; padding: 1.2rem; border-radius: 10px; border-left: 5px solid var(--danger); }
+        .context-tag { color: #fb7185; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; display: block; margin-bottom: 8px; }
+        #status { text-align: center; margin-top: 10px; font-size: 0.8rem; color: #64748b; }
+        .footer { text-align: center; margin-top: 40px; padding: 20px; border-top: 1px solid #334155; color: #64748b; font-size: 0.75rem; }
+    </style>
+</head>
+<body>
+
+<div id="aboutModal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="toggleAbout()">&times;</span>
+        <h2 style="color: #fb7185;">About NEDI</h2>
+        <p>The <strong>Negative Event Density Index (NEDI)</strong> is a data visualization tool designed to quantify the "reporting density" of historical crises.</p>
+        <h3 style="font-size: 1rem; color: #f1f5f9;">How it works:</h3>
+        <ul style="color: #94a3b8; font-size: 0.9rem;">
+            <li><strong>Data Sourcing:</strong> Real-time scraping of Wikipedia's chronological archives via the MediaWiki API.</li>
+            <li><strong>Keyword Filtering:</strong> Events are scanned for high-stress identifiers (e.g., <em>war, death, crash, crisis, riot, pandemic</em>).</li>
+            <li><strong>Density vs. Sentiment:</strong> NEDI doesn't measure how "bad" a year felt, but rather the <em>volume</em> of distinct reported incidents. High spikes indicate periods of high geopolitical volatility.</li>
+            <li><strong>How to Cite this Project:</strong> Jamie Gostt (2026). Negative Event Density Index (NEDI). [Your GitHub Link]</li>
+        </ul>
+        <p style="font-size: 0.85rem; background: #0f172a; padding: 15px; border-radius: 8px; color: #64748b;">
+            <strong>Note on Bias:</strong> As Wikipedia's records are more detailed for recent history, NEDI naturally trends upward over time. This tool is best used to compare years within the same 50-year era.
+        </p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="card" style="text-align: center;">
+        <button class="btn-about" onclick="toggleAbout()">Methodology & About</button>
+        <h1 style="color: #fb7185; margin: 0 0 5px 0; font-size: 1.8rem;">Negative Event Density Index (NEDI)</h1>
+        <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 25px;">Measuring Historical Volatility Through Reported Negative Event Volume</p>
+        
+        <div class="controls">
+            <div style="display:flex; gap:10px;">
+                <input type="number" id="startYear" value="1910">
+                <span style="align-self:center; color:#475569">to</span>
+                <input type="number" id="endYear" value="2024">
+            </div>
+            
+            <div class="toggle-group">
+                <label class="toggle-item"><input type="checkbox" id="showTrend" checked onchange="refreshChart()"> Trend</label>
+                <label class="toggle-item"><input type="checkbox" id="showPhases" checked onchange="refreshChart()"> Phases</label>
+            </div>
+
+            <button class="btn-run" onclick="runGlobalAnalysis()">Run Analysis</button>
+            <button id="exportCsvBtn" class="btn-secondary" onclick="exportToCSV()">CSV</button>
+            <button id="exportAllBtn" class="btn-secondary" style="background:#6366f1" onclick="exportAllData()">JSON Archive</button>
+        </div>
+
+        <div id="progressContainer"><div id="progressBar"></div></div>
+        <div id="status">Ready</div>
+    </div>
+
+    <div class="card chart-box"><canvas id="comparisonChart"></canvas></div>
+
+    <div id="timelineSection" style="display:none">
+        <h2 id="focusYear" style="text-align:center; color: #f1f5f9; margin-bottom: 30px;"></h2>
+        <div class="event-grid" id="eventList"></div>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; <span id="currentYear"></span> NEDI Negative Event Density Index. MIT License.</p>
+<p>&copy; <span id="currentYear"></span> <strong>Jamie A. Gostt</strong> | NEDI Negative Event Density Index</p>
+    <p>Code: <a href="#" style="color:#94a3b8">MIT</a> | Research & Logic: <a href="#" style="color:#94a3b8">CC BY 4.0</a></p>
+    <p style="margin-top:10px; opacity:0.7;">Data sourced via Wikipedia API. Sentiment analysis is algorithmic and for research purposes only.</p>
+    <p>NB: Sentiment analysis can be incorrect. Data Accuracy Relies on the Quality and Sentiment of Reported Events.</p>
+    </footer>
+</div>
+
+<script>
+    document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+    function toggleAbout() {
+        const modal = document.getElementById('aboutModal');
+        modal.style.display = (modal.style.display === 'block') ? 'none' : 'block';
+    }
+
+    // [Rest of the core analysis logic from the previous version remains the same...]
+    // Included below for completeness of a single file copy-paste.
+
+    const CRISIS_KEYS = ["killed", "death", "dead", "attack", "war", "crisis", "bomb", "shooting", "riot", "fatal", "recession", "pandemic", "covid", "clash", "nuclear"];
+    const ABBR_REGEX = /(?<!\b(?:U\.S|U\.N|D\.C|Jan|Feb|Mar|Apr|Aug|Sept|Oct|Nov|Dec|No|St|Dr|Prof|Mr|Mrs|Ms|vs))\.\s+(?=[A-Z0-9])/;
+
+    const HISTORICAL_PHASES = [
+        { label: 'WW1', start: 1914, end: 1918, color: 'rgba(225, 29, 72, 0.2)' },
+        { label: 'Great Depression', start: 1929, end: 1939, color: 'rgba(251, 113, 133, 0.12)' },
+        { label: 'WW2', start: 1939, end: 1945, color: 'rgba(225, 29, 72, 0.2)' },
+        { label: 'Cold War', start: 1947, end: 1991, color: 'rgba(71, 85, 105, 0.08)' },
+        { label: 'COVID-19', start: 2020, end: 2022, color: 'rgba(225, 29, 72, 0.2)' }
+    ];
+
+    let globalStore = {};
+    let currentLabels = [];
+    let currentCounts = [];
+    let chart;
+
+    async function runGlobalAnalysis() {
+        const start = +document.getElementById('startYear').value;
+        const end = +document.getElementById('endYear').value;
+        const totalYears = end - start + 1;
+
+        if (totalYears > 150) {
+            if (!confirm(`Analysis of ${totalYears} years requested. Proceed with stabilization delay?`)) return;
+        }
+
+        const status = document.getElementById('status');
+        const pBar = document.getElementById('progressBar');
+        const pCont = document.getElementById('progressContainer');
+        const csvBtn = document.getElementById('exportCsvBtn');
+        const allBtn = document.getElementById('exportAllBtn');
+        
+        pCont.style.display = 'block';
+        csvBtn.style.display = 'none';
+        allBtn.style.display = 'none';
+        globalStore = {}; currentLabels = []; currentCounts = [];
+
+        for(let i = 0; i < totalYears; i++) {
+            const y = start + i;
+            status.innerText = `Parsing ${y}...`;
+            pBar.style.width = `${((i + 1) / totalYears) * 100}%`;
+
+            const data = await fetchYearData(y);
+            globalStore[y] = data;
+            currentLabels.push(y);
+            currentCounts.push(data.length);
+
+            if (totalYears > 150) await new Promise(r => setTimeout(r, 100));
+        }
+
+        renderChart();
+        status.innerText = "Complete.";
+        pCont.style.display = 'none';
+        csvBtn.style.display = 'inline-block';
+        allBtn.style.display = 'inline-block';
+    }
+
+    async function fetchYearData(year) {
+        try {
+            const url = `https://en.wikipedia.org/w/api.php?action=parse&page=${year}&prop=text&format=json&origin=*`;
+            const res = await fetch(url);
+            const json = await res.json();
+            const doc = new DOMParser().parseFromString(json.parse.text["*"], "text/html");
+            let yearEvents = [];
+            const container = doc.querySelector('.mw-parser-output');
+            if(!container) return [];
+            container.querySelectorAll(':scope > ul > li').forEach(li => walk(li, [], yearEvents));
+            return yearEvents.filter((v, i, a) => a.findIndex(t => t.body === v.body) === i);
+        } catch(e) { return []; }
+    }
+
+    function walk(li, stack, collector) {
+        let text = "";
+        for (let node of li.childNodes) {
+            if (node.nodeType === 3 || (node.nodeType === 1 && !['UL','OL'].includes(node.tagName))) text += node.textContent;
+            else if (['UL','OL'].includes(node.tagName)) break;
+        }
+        text = text.replace(/\[\d+\]/g, '').trim();
+        const sub = li.querySelector('ul, ol');
+        if (sub) {
+            const nextStack = [...stack];
+            if (text) nextStack.push(text.replace(/:$/, ''));
+            sub.querySelectorAll(':scope > li').forEach(s => walk(s, nextStack, collector));
+        } else if (text.length > 10) {
+            const isNeg = CRISIS_KEYS.some(k => text.toLowerCase().includes(k)) || 
+                          stack.some(c => CRISIS_KEYS.some(k => c.toLowerCase().includes(k)));
+            if (isNeg) {
+                const parts = text.split(ABBR_REGEX);
+                let body = parts[0];
+                if (body.length < 40 && parts.length > 1) body = parts[0] + '. ' + parts[1];
+                collector.push({ body: body.endsWith('.') ? body : body + '.', context: stack.join(' → ') });
+            }
+        }
+    }
+
+    function getMovingAverage(arr) {
+        return arr.map((val, i, a) => {
+            let sub = a.slice(Math.max(0, i - 1), Math.min(a.length, i + 2));
+            return (sub.reduce((s, v) => s + v, 0) / sub.length).toFixed(2);
+        });
+    }
+
+    function exportToCSV() {
+        const trendData = getMovingAverage(currentCounts);
+        let csvContent = "data:text/csv;charset=utf-8,Year,Event_Density,Stress_Trend\n";
+        currentLabels.forEach((year, i) => {
+            csvContent += `${year},${currentCounts[i]},${trendData[i]}\n`;
+        });
+        downloadFile(encodeURI(csvContent), "nedi_summary.csv");
+    }
+
+    function exportAllData() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(globalStore, null, 2));
+        downloadFile(dataStr, "nedi_archive.json");
+    }
+
+    function downloadFile(uri, filename) {
+        const link = document.createElement("a");
+        link.setAttribute("href", uri);
+        link.setAttribute("download", filename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function refreshChart() { if (currentLabels.length > 0) renderChart(); }
+
+    function renderChart() {
+        const ctx = document.getElementById('comparisonChart').getContext('2d');
+        if (chart) chart.destroy();
+        const showTrend = document.getElementById('showTrend').checked;
+        const showPhases = document.getElementById('showPhases').checked;
+
+        const annotations = showPhases ? HISTORICAL_PHASES.filter(p => p.start <= currentLabels[currentLabels.length-1] && p.end >= currentLabels[0]).map(p => {
+            const s = currentLabels.indexOf(p.start), e = currentLabels.indexOf(p.end);
+            return {
+                type: 'box', xMin: s === -1 ? -0.5 : s - 0.5, xMax: e === -1 ? currentLabels.length - 0.5 : e + 0.5,
+                backgroundColor: p.color, borderWidth: 0,
+                label: { display: true, content: p.label, position: 'start', color: '#94a3b8', font: { size: 10, weight: 'bold' }, yAdjust: 10 }
+            };
+        }) : [];
+
+        const avg = currentCounts.reduce((a, b) => a + b, 0) / currentCounts.length;
+        const maxDist = Math.max(...currentCounts.map(c => Math.abs(c - avg))) || 1;
+        const barColors = currentCounts.map(c => `hsl(${60 - ((c - avg) / maxDist * 60)}, 75%, 50%)`);
+
+        chart = new Chart(ctx, {
+            data: { 
+                labels: currentLabels, 
+                datasets: [
+                    { type: 'bar', label: 'Event Density', data: currentCounts, backgroundColor: barColors, borderRadius: 4, barPercentage: 0.9, order: 2 },
+                    { 
+                        type: 'line', label: 'Trend', data: getMovingAverage(currentCounts), 
+                        borderColor: '#f1f5f9', borderWidth: 2, pointRadius: 0, tension: 0.4, order: 1, hidden: !showTrend 
+                    }
+                ] 
+            },
+            options: { 
+                responsive: true, maintainAspectRatio: false,
+                onClick: (e, i) => { if(i.length) showYear(currentLabels[i[0].index]); },
+                scales: { 
+                    y: { beginAtZero: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }, 
+                    x: { grid: { display: false }, ticks: { color: '#94a3b8' } } 
+                },
+                plugins: { legend: { labels: { color: '#f1f5f9' } }, annotation: { annotations: annotations } }
+            }
+        });
+    }
+
+    function showYear(year) {
+        const events = globalStore[year];
+        if (!events || events.length === 0) return;
+        document.getElementById('timelineSection').style.display = 'block';
+        document.getElementById('focusYear').innerText = `${year}: Historical Density Events`;
+        document.getElementById('eventList').innerHTML = events.map(e => `
+            <div class="event-card"><span class="context-tag">${e.context}</span>${e.body}</div>`).join('');
+        document.getElementById('timelineSection').scrollIntoView({ behavior: 'smooth' });
+    }
+</script>
+</body>
+</html>
