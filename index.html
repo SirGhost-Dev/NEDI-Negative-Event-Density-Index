@@ -109,9 +109,6 @@
         modal.style.display = (modal.style.display === 'block') ? 'none' : 'block';
     }
 
-    // [Rest of the core analysis logic from the previous version remains the same...]
-    // Included below for completeness of a single file copy-paste.
-
     const CRISIS_KEYS = ["killed", "death", "dead", "attack", "war", "crisis", "bomb", "shooting", "riot", "fatal", "recession", "pandemic", "covid", "clash", "nuclear", "battle"];
     const ABBR_REGEX = /(?<!\b(?:U\.S|U\.N|D\.C|Jan|Feb|Mar|Apr|Aug|Sept|Oct|Nov|Dec|No|St|Dr|Prof|Mr|Mrs|Ms|vs))\.\s+(?=[A-Z0-9])/;
 
@@ -168,18 +165,51 @@
         allBtn.style.display = 'inline-block';
     }
 
+    function getWikipediaYearTitle(year) {
+    // There is no year 0 in the AD/BC year system used by Wikipedia year pages.
+    // (1 BC is followed directly by AD 1.)
+    if (year === 0) return null; // skip / treat as invalid
+
+    // Optional: support BC if you ever pass negative years (e.g. -44 => "44 BC")
+    if (year < 0) return `${Math.abs(year)} BC`;
+
+    // Key fix: Wikipedia switches to "AD N" style for early AD years (e.g., AD 150).
+    if (year <= 150) return `AD ${year}`;
+
+    return String(year);
+    }
+
     async function fetchYearData(year) {
-        try {
-            const url = `https://en.wikipedia.org/w/api.php?action=parse&page=${year}&prop=text&format=json&origin=*`;
-            const res = await fetch(url);
-            const json = await res.json();
-            const doc = new DOMParser().parseFromString(json.parse.text["*"], "text/html");
-            let yearEvents = [];
-            const container = doc.querySelector('.mw-parser-output');
-            if(!container) return [];
-            container.querySelectorAll(':scope > ul > li').forEach(li => walk(li, [], yearEvents));
-            return yearEvents.filter((v, i, a) => a.findIndex(t => t.body === v.body) === i);
-        } catch(e) { return []; }
+    try {
+        const title = getWikipediaYearTitle(year);
+        if (!title) return []; // e.g. year 0
+
+        const url = "https://en.wikipedia.org/w/api.php?" + new URLSearchParams({
+        action: "parse",
+        page: title,
+        prop: "text",
+        format: "json",
+        origin: "*",
+        redirects: "1", // crucial: follow redirects if the title redirects
+        });
+
+        const res = await fetch(url);
+        const json = await res.json();
+
+        const html = json?.parse?.text?.["*"];
+        if (!html) return [];
+
+        const doc = new DOMParser().parseFromString(html, "text/html");
+
+        let yearEvents = [];
+        const container = doc.querySelector(".mw-parser-output");
+        if (!container) return [];
+
+        container.querySelectorAll(":scope > ul > li").forEach(li => walk(li, [], yearEvents));
+        return yearEvents.filter((v, i, a) => a.findIndex(t => t.body === v.body) === i);
+    } catch (e) {
+        return [];
+    }
     }
 
     function walk(li, stack, collector) {
