@@ -3,323 +3,2051 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Negative Event Density Index (NEDI)</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0"></script>
+    <title>NEDI — Negative Event Density Index</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
     <style>
-        :root { --danger: #e11d48; --safe: #10b981; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; }
-        body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .card { background: var(--card); padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid #334155; position: relative; }
-        .controls { display: flex; gap: 15px; align-items: center; justify-content: center; flex-wrap: wrap; margin-bottom: 10px; }
-        .toggle-group { display: flex; gap: 15px; align-items: center; background: #0f172a; padding: 10px 20px; border-radius: 30px; border: 1px solid #475569; }
-        .toggle-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #94a3b8; cursor: pointer; }
-        input[type="number"] { padding: 8px; background: #0f172a; border: 1px solid #475569; border-radius: 6px; color: white; width: 80px; }
-        
-        button { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; color: white; }
-        .btn-run { background: var(--danger); }
-        .btn-secondary { background: #475569; display: none; margin-left: 5px; }
-        .btn-about { background: transparent; border: 1px solid #475569; color: #94a3b8; margin-bottom: 10px; }
-        button:hover { opacity: 0.8; }
+        :root {
+            --paper:      #faf9f6;
+            --surface:    #ffffff;
+            --ink:        #1c1917;
+            --ink-mid:    #57534e;
+            --ink-faint:  #a8a29e;
+            --rule:       #e7e4de;
+            --rule-dark:  #d6d2ca;
+            --accent:     #9f1d20;
+            --accent-dim: #7f1d1d;
+            --accent-soft: rgba(159, 29, 32, 0.06);
+            --ok:         #3f6212;
+            --serif: 'Fraunces', Georgia, serif;
+            --sans:  'Archivo', system-ui, sans-serif;
+            --mono:  'IBM Plex Mono', ui-monospace, monospace;
+        }
 
-        /* Modal Styles */
-        #aboutModal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(5px); }
-        .modal-content { background: var(--card); margin: 5% auto; padding: 2.5rem; border: 1px solid #334155; width: 80%; max-width: 700px; border-radius: 15px; line-height: 1.6; }
-        .close-btn { float: right; cursor: pointer; font-size: 1.5rem; color: #94a3b8; }
-        
-        #progressContainer { width: 100%; background: #0f172a; height: 6px; border-radius: 10px; margin-top: 15px; display: none; overflow: hidden; }
-        #progressBar { width: 0%; height: 100%; background: linear-gradient(90deg, #fb7185, #e11d48); transition: width 0.3s ease; }
-        
-        .chart-box { height: 450px; }
-        .event-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
-        .event-card { background: #1e293b; padding: 1.2rem; border-radius: 10px; border-left: 5px solid var(--danger); }
-        .context-tag { color: #fb7185; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; display: block; margin-bottom: 8px; }
-        #status { text-align: center; margin-top: 10px; font-size: 0.8rem; color: #64748b; }
-        .footer { text-align: center; margin-top: 40px; padding: 20px; border-top: 1px solid #334155; color: #64748b; font-size: 0.75rem; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: var(--sans);
+            background: var(--paper);
+            background-image: radial-gradient(circle at 50% -20%, #ffffff 0%, var(--paper) 55%);
+            color: var(--ink);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        ::selection { background: var(--accent-soft); color: var(--accent-dim); }
+
+        .container {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 0 32px 72px;
+        }
+
+        /* ── Page-load stagger ─────────────────────────────────────── */
+        @keyframes rise {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .rise    { animation: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+        .rise-1  { animation-delay: 0.05s; }
+        .rise-2  { animation-delay: 0.14s; }
+        .rise-3  { animation-delay: 0.23s; }
+        .rise-4  { animation-delay: 0.32s; }
+
+        /* ── Masthead ──────────────────────────────────────────────── */
+        .masthead {
+            padding: 46px 0 26px;
+            border-bottom: 3px double var(--rule-dark);
+            margin-bottom: 10px;
+        }
+
+        .masthead-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            font-family: var(--mono);
+            font-size: 0.62rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--ink-faint);
+            border-bottom: 1px solid var(--rule);
+            padding-bottom: 12px;
+            margin-bottom: 26px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .masthead-meta .accent { color: var(--accent); }
+
+        .masthead-main {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 28px;
+            flex-wrap: wrap;
+        }
+
+        .wordmark {
+            font-family: var(--serif);
+            font-size: clamp(4rem, 10vw, 7rem);
+            font-weight: 600;
+            font-variation-settings: 'opsz' 144;
+            line-height: 0.82;
+            letter-spacing: -0.02em;
+            color: var(--ink);
+        }
+
+        .wordmark em {
+            font-style: italic;
+            font-weight: 400;
+            color: var(--accent);
+        }
+
+        .masthead-sub {
+            max-width: 340px;
+            font-size: 0.8rem;
+            line-height: 1.6;
+            color: var(--ink-mid);
+            padding-bottom: 8px;
+        }
+
+        .masthead-sub strong {
+            display: block;
+            font-weight: 600;
+            color: var(--ink);
+            margin-bottom: 3px;
+        }
+
+        /* ── Controls ──────────────────────────────────────────────── */
+        .controls {
+            display: flex;
+            align-items: stretch;
+            gap: 0;
+            border-bottom: 1px solid var(--rule);
+            padding: 20px 0;
+            flex-wrap: wrap;
+            row-gap: 16px;
+        }
+
+        .ctrl {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            padding: 0 28px;
+            border-left: 1px solid var(--rule);
+        }
+
+        .ctrl:first-child { padding-left: 0; border-left: none; }
+
+        .ctrl-label {
+            font-family: var(--mono);
+            font-size: 0.56rem;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: var(--ink-faint);
+        }
+
+        .year-row { display: flex; align-items: center; gap: 10px; }
+
+        input[type="number"] {
+            width: 88px;
+            padding: 7px 10px;
+            background: var(--surface);
+            border: 1px solid var(--rule-dark);
+            border-radius: 3px;
+            color: var(--ink);
+            font-family: var(--mono);
+            font-size: 0.95rem;
+            outline: none;
+            -moz-appearance: textfield;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+        input[type="number"]:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-soft);
+        }
+
+        .year-sep { color: var(--ink-faint); font-size: 0.85rem; }
+
+        select.select {
+            padding: 7px 30px 7px 10px;
+            background: var(--surface);
+            border: 1px solid var(--rule-dark);
+            border-radius: 3px;
+            color: var(--ink);
+            font-family: var(--mono);
+            font-size: 0.78rem;
+            outline: none;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23a8a29e'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        select.select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-soft);
+        }
+
+        .toggle-row { display: flex; gap: 16px; align-items: center; height: 100%; }
+
+        .toggle-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 0.76rem;
+            color: var(--ink-mid);
+            font-weight: 500;
+            user-select: none;
+        }
+
+        .toggle-item input[type="checkbox"] {
+            appearance: none;
+            width: 15px; height: 15px;
+            border: 1.5px solid var(--rule-dark);
+            border-radius: 2px;
+            background: var(--surface);
+            cursor: pointer;
+            position: relative;
+            flex-shrink: 0;
+            transition: all 0.12s;
+        }
+
+        .toggle-item input[type="checkbox"]:checked {
+            background: var(--ink);
+            border-color: var(--ink);
+        }
+
+        .toggle-item input[type="checkbox"]:checked::after {
+            content: '';
+            position: absolute;
+            left: 4px; top: 1px;
+            width: 4px; height: 8px;
+            border: 1.5px solid var(--paper);
+            border-top: none; border-left: none;
+            transform: rotate(45deg);
+        }
+
+        .controls-right {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-left: 28px;
+        }
+
+        /* ── Buttons ───────────────────────────────────────────────── */
+        .btn {
+            padding: 9px 20px;
+            border-radius: 3px;
+            border: none;
+            cursor: pointer;
+            font-family: var(--sans);
+            font-size: 0.74rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            transition: all 0.14s;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--ink);
+            color: var(--paper);
+        }
+
+        .btn-primary:hover { background: var(--accent-dim); }
+        .btn-primary:active { transform: translateY(1px); }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--ink-mid);
+            border: 1px solid var(--rule-dark);
+        }
+
+        .btn-ghost:hover { border-color: var(--ink-faint); color: var(--ink); }
+
+        .export-row { display: none; align-items: center; gap: 6px; }
+        .export-row.visible { display: flex; }
+
+        /* ── Status line ───────────────────────────────────────────── */
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 0;
+        }
+
+        .status-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: var(--rule-dark);
+            flex-shrink: 0;
+            transition: background 0.25s;
+        }
+
+        .status-dot.active { background: var(--accent); animation: pulse 1s infinite; }
+        .status-dot.done   { background: var(--ok); }
+        .status-dot.warn   { background: #d97706; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50%      { opacity: 0.3; }
+        }
+
+        .status-text {
+            font-family: var(--mono);
+            font-size: 0.66rem;
+            color: var(--ink-faint);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .progress-wrap {
+            flex: 1;
+            height: 1px;
+            background: var(--rule);
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress-wrap.active { display: block; }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.2s ease;
+        }
+
+        /* ── Stats strip ───────────────────────────────────────────── */
+        .stats-strip {
+            display: none;
+            grid-template-columns: repeat(4, 1fr);
+            border: 1px solid var(--rule);
+            border-radius: 4px;
+            background: var(--surface);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .stats-strip.visible { display: grid; animation: rise 0.4s cubic-bezier(0.22,1,0.36,1) both; }
+
+        .stat {
+            padding: 16px 22px;
+            border-left: 1px solid var(--rule);
+        }
+
+        .stat:first-child { border-left: none; }
+
+        .stat-label {
+            font-family: var(--mono);
+            font-size: 0.56rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--ink-faint);
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-family: var(--serif);
+            font-size: 1.7rem;
+            font-weight: 600;
+            color: var(--ink);
+            line-height: 1;
+        }
+
+        .stat-value small {
+            font-family: var(--mono);
+            font-size: 0.62rem;
+            font-weight: 400;
+            color: var(--ink-faint);
+            margin-left: 4px;
+        }
+
+        .stat-value.accent { color: var(--accent); }
+
+        /* ── Trajectory verdict ────────────────────────────────────── */
+        .verdict-strip {
+            display: none;
+            border: 1px solid var(--rule);
+            border-left: 3px solid var(--ink-faint);
+            border-radius: 4px;
+            background: var(--surface);
+            margin-bottom: 20px;
+            padding: 16px 22px 14px;
+        }
+
+        .verdict-strip.visible {
+            display: flex;
+            gap: 10px 28px;
+            align-items: baseline;
+            flex-wrap: wrap;
+            animation: rise 0.4s cubic-bezier(0.22,1,0.36,1) both;
+        }
+
+        .verdict-strip.worse  { border-left-color: var(--accent); }
+        .verdict-strip.better { border-left-color: var(--ok); }
+
+        .verdict-label {
+            font-family: var(--mono);
+            font-size: 0.56rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--ink-faint);
+        }
+
+        .verdict-reading {
+            font-family: var(--serif);
+            font-size: 1.45rem;
+            font-weight: 600;
+            color: var(--ink);
+            line-height: 1;
+        }
+
+        .verdict-reading.worse  { color: var(--accent-dim); }
+        .verdict-reading.better { color: var(--ok); }
+
+        .verdict-detail {
+            font-size: 0.76rem;
+            color: var(--ink-mid);
+            line-height: 1.55;
+            flex: 1;
+            min-width: 280px;
+        }
+
+        .verdict-caveat {
+            width: 100%;
+            font-family: var(--mono);
+            font-size: 0.56rem;
+            letter-spacing: 0.08em;
+            color: var(--ink-faint);
+            border-top: 1px solid var(--rule);
+            padding-top: 9px;
+            margin-top: 4px;
+        }
+
+        /* ── Figure panels ─────────────────────────────────────────── */
+        .figure {
+            background: var(--surface);
+            border: 1px solid var(--rule);
+            border-radius: 4px;
+            margin-bottom: 22px;
+        }
+
+        .figure-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            padding: 16px 24px 14px;
+            border-bottom: 1px solid var(--rule);
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .figure-title {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--ink);
+            letter-spacing: 0.01em;
+        }
+
+        .figure-title .fig-no {
+            font-family: var(--mono);
+            font-size: 0.62rem;
+            font-weight: 500;
+            color: var(--accent);
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            margin-right: 10px;
+        }
+
+        .figure-hint {
+            font-family: var(--mono);
+            font-size: 0.6rem;
+            color: var(--ink-faint);
+            letter-spacing: 0.06em;
+        }
+
+        .figure-body { padding: 20px 24px 18px; }
+
+        /* Canvas always in the DOM so Chart.js always reads correct dimensions;
+           the empty-state overlay sits on top and hides once data loads. */
+        .chart-wrap { position: relative; height: 420px; }
+
+        .chart-wrap canvas {
+            position: absolute;
+            inset: 0;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .chart-empty-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 10px;
+            background: var(--surface);
+            pointer-events: none;
+        }
+
+        .empty-glyph {
+            font-family: var(--serif);
+            font-size: 2.4rem;
+            font-style: italic;
+            color: var(--rule-dark);
+            line-height: 1;
+        }
+
+        .empty-title { font-size: 0.8rem; font-weight: 600; color: var(--ink-faint); }
+        .empty-sub   { font-family: var(--mono); font-size: 0.62rem; color: var(--ink-faint); opacity: 0.7; letter-spacing: 0.06em; }
+
+        /* ── Severity legend ───────────────────────────────────────── */
+        .severity-legend {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 24px;
+            border-top: 1px solid var(--rule);
+            flex-wrap: wrap;
+        }
+
+        .sev-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--mono);
+            font-size: 0.58rem;
+            color: var(--ink-faint);
+            letter-spacing: 0.06em;
+        }
+
+        .sev-swatch { width: 10px; height: 10px; border-radius: 2px; }
+
+        .heat-scale {
+            flex: 0 1 200px;
+            height: 8px;
+            border-radius: 2px;
+            background: linear-gradient(90deg, #d6d3d1, #d97706, #c2410c, #7f1d1d);
+        }
+
+        .heat-scale.red {
+            background: linear-gradient(90deg, #f3cdc9, #e08579, #b91c1c, #7f1d1d, #450a0a);
+        }
+
+        .ledger-class {
+            margin-left: 5px;
+            font-size: 0.5rem;
+            letter-spacing: 0.08em;
+            color: #b45309;
+            font-weight: 500;
+        }
+
+        .ledger-toll {
+            font-family: var(--mono);
+            font-size: 0.56rem;
+            letter-spacing: 0.1em;
+            color: var(--accent);
+            margin-top: 4px;
+        }
+
+        /* ── Incident ledger ───────────────────────────────────────── */
+        .ledger-section { display: none; }
+        .ledger-section.visible { display: block; animation: rise 0.4s cubic-bezier(0.22,1,0.36,1) both; }
+
+        .ledger-year {
+            font-family: var(--serif);
+            font-size: 3rem;
+            font-weight: 600;
+            font-variation-settings: 'opsz' 144;
+            color: var(--ink);
+            line-height: 1;
+        }
+
+        .phase-tags {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-self: center;
+        }
+
+        .phase-tag {
+            font-family: var(--mono);
+            font-size: 0.58rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--ink-mid);
+            background: var(--paper);
+            border: 1px solid var(--rule-dark);
+            border-radius: 2px;
+            padding: 4px 9px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .phase-tag::before {
+            content: '';
+            width: 6px; height: 6px;
+            border-radius: 1px;
+            background: var(--accent);
+            opacity: 0.65;
+        }
+
+        .ledger-count {
+            font-family: var(--mono);
+            font-size: 0.62rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--accent);
+            border: 1px solid currentColor;
+            border-radius: 20px;
+            padding: 4px 12px;
+        }
+
+        .ledger-rows {
+            columns: 2;
+            column-gap: 0;
+            column-rule: 1px solid var(--rule);
+        }
+
+        @media (max-width: 860px) { .ledger-rows { columns: 1; } }
+
+        .ledger-row {
+            display: flex;
+            gap: 14px;
+            padding: 13px 24px;
+            border-bottom: 1px solid var(--rule);
+            break-inside: avoid;
+            transition: background 0.12s;
+        }
+
+        .ledger-row:hover { background: var(--accent-soft); }
+
+        .ledger-no {
+            font-family: var(--mono);
+            font-size: 0.6rem;
+            color: var(--ink-faint);
+            padding-top: 3px;
+            min-width: 32px;
+            flex-shrink: 0;
+        }
+
+        .ledger-row:hover .ledger-no { color: var(--accent); }
+
+        .ledger-text { flex: 1; }
+
+        .ledger-context {
+            font-family: var(--mono);
+            font-size: 0.56rem;
+            font-weight: 500;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 4px;
+        }
+
+        .ledger-body {
+            font-size: 0.85rem;
+            color: var(--ink-mid);
+            line-height: 1.55;
+        }
+
+        /* ── Modal ─────────────────────────────────────────────────── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(28, 25, 23, 0.4);
+            backdrop-filter: blur(3px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.open { display: flex; }
+
+        .modal {
+            background: var(--surface);
+            border: 1px solid var(--rule);
+            border-radius: 6px;
+            max-width: 640px;
+            width: 92%;
+            max-height: 84vh;
+            overflow-y: auto;
+            box-shadow: 0 24px 70px rgba(28, 25, 23, 0.18);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 26px;
+            border-bottom: 3px double var(--rule-dark);
+        }
+
+        .modal-title {
+            font-family: var(--serif);
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        .modal-close {
+            background: none;
+            border: 1px solid var(--rule);
+            border-radius: 3px;
+            color: var(--ink-faint);
+            cursor: pointer;
+            width: 30px; height: 30px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem;
+            transition: all 0.12s;
+        }
+
+        .modal-close:hover { border-color: var(--ink-faint); color: var(--ink); }
+
+        .modal-body { padding: 24px 26px; }
+        .modal-section { margin-bottom: 24px; }
+
+        .modal-section-label {
+            font-family: var(--mono);
+            font-size: 0.58rem;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        .modal-section p, .modal-section li {
+            font-size: 0.87rem;
+            color: var(--ink-mid);
+            line-height: 1.7;
+            margin-bottom: 5px;
+        }
+
+        .modal-section strong { color: var(--ink); font-weight: 600; }
+        .modal-section ul { padding-left: 1.1rem; }
+        .modal-section li { margin-bottom: 8px; }
+
+        .modal-note {
+            background: var(--paper);
+            border: 1px solid var(--rule);
+            border-left: 3px solid var(--accent);
+            border-radius: 3px;
+            padding: 15px 18px;
+            font-size: 0.78rem;
+            color: var(--ink-mid);
+            line-height: 1.75;
+        }
+
+        /* ── Footer ────────────────────────────────────────────────── */
+        .footer {
+            border-top: 3px double var(--rule-dark);
+            margin-top: 64px;
+            padding: 20px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            font-family: var(--mono);
+            font-size: 0.6rem;
+            letter-spacing: 0.06em;
+            color: var(--ink-faint);
+        }
+
+        .footer a { color: var(--ink-faint); text-decoration: none; border-bottom: 1px solid var(--rule); }
+        .footer a:hover { color: var(--ink-mid); }
+
+        @media (max-width: 720px) {
+            .container { padding: 0 20px 60px; }
+            .masthead-main { flex-direction: column; align-items: flex-start; }
+            .controls { flex-direction: column; align-items: stretch; }
+            .ctrl { padding: 0; border-left: none; }
+            .controls-right { margin-left: 0; padding-left: 0; flex-wrap: wrap; }
+            .controls-right .btn-primary { width: 100%; padding: 12px 20px; }
+            .stats-strip { grid-template-columns: repeat(2, 1fr); }
+            .stat:nth-child(3) { border-left: none; border-top: 1px solid var(--rule); }
+            .stat:nth-child(4) { border-top: 1px solid var(--rule); }
+        }
     </style>
 </head>
 <body>
 
-<div id="aboutModal">
-    <div class="modal-content">
-        <span class="close-btn" onclick="toggleAbout()">&times;</span>
-        <h2 style="color: #fb7185;">About NEDI</h2>
-        <p>The <strong>Negative Event Density Index (NEDI)</strong> is a data visualization tool designed to quantify the "reporting density" of historical crises.</p>
-        <h3 style="font-size: 1rem; color: #f1f5f9;">How it works:</h3>
-        <ul style="color: #94a3b8; font-size: 0.9rem;">
-            <li><strong>Data Sourcing:</strong> Real-time scraping of Wikipedia's chronological archives via the MediaWiki API.</li>
-            <li><strong>Keyword Filtering:</strong> Events are scanned for high-stress identifiers (e.g., <em>war, death, crash, crisis, riot, pandemic</em>).</li>
-            <li><strong>Density vs. Sentiment:</strong> NEDI doesn't measure how "bad" a year felt, but rather the <em>volume</em> of distinct reported incidents. High spikes indicate periods of high geopolitical volatility.</li>
-            <li><strong>How to Cite this Project:</strong> Jamie Gostt (2026). Negative Event Density Index (NEDI). [Your GitHub Link]</li>
-        </ul>
-        <p style="font-size: 0.85rem; background: #0f172a; padding: 15px; border-radius: 8px; color: #64748b;">
-            <strong>Note on Bias:</strong> As Wikipedia's records are more detailed for recent history, NEDI naturally trends upward over time. This tool is best used to compare years within the same 50-year era.
-            <br><br>
-            <strong>Note on Dates:</strong> Due to Wikipedia's naming conventions, dates below AD 150, particularly AD 1-9 may display incorrectly for the time being.
-        </p>
+<div id="aboutModal" class="modal-overlay" onclick="if(event.target===this)toggleAbout()">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="modal-title">About <em style="font-style:italic; color:var(--accent)">NEDI</em></span>
+            <button class="modal-close" onclick="toggleAbout()">&#x2715;</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-section">
+                <div class="modal-section-label">Overview</div>
+                <p>The <strong>Negative Event Density Index (NEDI)</strong> quantifies the "reporting density" of historical crises by counting distinct negative incidents documented per year in Wikipedia's chronological archives.</p>
+            </div>
+            <div class="modal-section">
+                <div class="modal-section-label">Methodology</div>
+                <ul>
+                    <li><strong>Data source:</strong> raw wikitext for each year page, fetched via the MediaWiki revisions API in real time.</li>
+                    <li><strong>Event isolation:</strong> only the <em>Events</em> section of each year page is parsed — Births, Deaths, Awards and reference sections are excluded at the source.</li>
+                    <li><strong>Keyword filtering:</strong> entries are matched against crisis identifiers (war, attack, massacre, pandemic, coup, famine, earthquake, and ~40 more) using whole-word matching to avoid substring false positives.</li>
+                    <li><strong>Strictly negative:</strong> response and relief actions (recovery funds, vaccines, aid, peace talks) are excluded even when tied to a crisis, and entries that inherit negativity only from a parent bullet (e.g. an election listed under "COVID-19 pandemic") are dropped when procedural.</li>
+                    <li><strong>Event classes:</strong> each incident is tagged <em>human</em> (violence, political, economic, technological) or <em>non-human</em> (geophysical, weather, disease) from its matched vocabulary; incidents matching both appear under both filters.</li>
+                    <li><strong>Death toll (estimated):</strong> tolls are parsed from event text ("killing at least 944", "death toll exceeds 500,000"). Incident figures are summed per year; cumulative milestones take the year's maximum to avoid double-counting. Charted on a log scale. Coverage is partial — treat as a lower bound.</li>
+                    <li><strong>Severity colouring:</strong> <em>Relative</em> mode colours bars by standard deviations from the range mean, highlighting true outlier years; <em>Heatmap</em> mode uses a continuous gradient over absolute counts, so mid-range years read as warm rather than neutral.</li>
+                    <li><strong>Trajectory:</strong> the verdict compares mean incident volume in the second half of the loaded range against the first half, alongside a least-squares linear trend (R&sup2; shown). It inherits the active event-class filter.</li>
+                    <li><strong>Local caching:</strong> parsed years are cached in the browser with tiered expiry — 24 hours for the current era, 7 days for the last decade, 30 days for historical years — so article updates are picked up on the next expiry. <em>Shift+click Run Analysis</em> to bypass the cache entirely.</li>
+                    <li><strong>Density vs. sentiment:</strong> NEDI counts the volume of distinct reported incidents, not their subjective severity.</li>
+                </ul>
+            </div>
+            <div class="modal-note">
+                <strong>Bias notice:</strong> Wikipedia's records are considerably more detailed for recent history. NEDI trends upward over time and is best used to compare years within the same era.<br><br>
+                <strong>Date note:</strong> years at or below AD 150 use Wikipedia's "AD N" naming format. Years 1–9 may display inconsistently.<br><br>
+                <strong>Citation:</strong> Jamie Gostt (2026). Negative Event Density Index (NEDI).
+            </div>
+        </div>
     </div>
 </div>
 
 <div class="container">
-    <div class="card" style="text-align: center;">
-        <button class="btn-about" onclick="toggleAbout()">Methodology & About</button>
-        <h1 style="color: #fb7185; margin: 0 0 5px 0; font-size: 1.8rem;">Negative Event Density Index (NEDI)</h1>
-        <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 25px;">Measuring Historical Volatility Through Reported Negative Event Volume</p>
-        
-        <div class="controls">
-            <div style="display:flex; gap:10px;">
+    <header class="masthead rise rise-1">
+        <div class="masthead-meta">
+            <span>Historical Volatility Research</span>
+            <span><span class="accent">&#9632;</span>&nbsp; Wikipedia Chronological Archive</span>
+            <span id="mastheadDate"></span>
+        </div>
+        <div class="masthead-main">
+            <h1 class="wordmark">NED<em>I</em></h1>
+            <p class="masthead-sub">
+                <strong>Negative Event Density Index</strong>
+                Measuring historical volatility through the volume of documented
+                negative incidents, year by year.
+            </p>
+        </div>
+    </header>
+
+    <div class="controls rise rise-2">
+        <div class="ctrl">
+            <div class="ctrl-label">Year Range</div>
+            <div class="year-row">
                 <input type="number" id="startYear" value="1910">
-                <span style="align-self:center; color:#475569">to</span>
+                <span class="year-sep">&#8594;</span>
                 <input type="number" id="endYear" value="2024">
             </div>
-            
-            <div class="toggle-group">
-                <label class="toggle-item"><input type="checkbox" id="showTrend" checked onchange="refreshChart()"> Trend</label>
-                <label class="toggle-item"><input type="checkbox" id="showPhases" checked onchange="refreshChart()"> Phases</label>
-            </div>
-
-            <button class="btn-run" onclick="runGlobalAnalysis()">Run Analysis</button>
-            <button id="exportCsvBtn" class="btn-secondary" onclick="exportToCSV()">CSV</button>
-            <button id="exportAllBtn" class="btn-secondary" style="background:#6366f1" onclick="exportAllData()">JSON Archive</button>
         </div>
 
-        <div id="progressContainer"><div id="progressBar"></div></div>
-        <div id="status">Ready</div>
+        <div class="ctrl">
+            <div class="ctrl-label">Metric</div>
+            <select id="metricSel" class="select" onchange="applyFilter()">
+                <option value="incidents">Incidents</option>
+                <option value="deaths">Est. death toll</option>
+            </select>
+        </div>
+
+        <div class="ctrl">
+            <div class="ctrl-label">Event Class</div>
+            <select id="eventClass" class="select" onchange="applyFilter()">
+                <option value="all">All events</option>
+                <option value="human">Human events</option>
+                <option value="natural">Non-human events</option>
+            </select>
+        </div>
+
+        <div class="ctrl">
+            <div class="ctrl-label">Colour Mode</div>
+            <select id="colourMode" class="select" onchange="applyColourMode()">
+                <option value="relative">Relative (&sigma;)</option>
+                <option value="heatmap">Heatmap</option>
+            </select>
+        </div>
+
+        <div class="ctrl">
+            <div class="ctrl-label">Overlays</div>
+            <div class="toggle-row">
+                <label class="toggle-item">
+                    <input type="checkbox" id="showTrend" checked onchange="refreshChart()">
+                    Trend
+                </label>
+                <label class="toggle-item">
+                    <input type="checkbox" id="showPhases" checked onchange="refreshChart()">
+                    Phases
+                </label>
+            </div>
+        </div>
+
+        <div class="controls-right">
+            <div class="export-row" id="exportRow">
+                <button class="btn btn-ghost" onclick="exportToCSV()">CSV</button>
+                <button class="btn btn-ghost" onclick="exportAllData()">JSON</button>
+            </div>
+            <button class="btn btn-ghost" onclick="toggleAbout()">Methodology</button>
+            <button class="btn btn-primary" id="runBtn" onclick="runGlobalAnalysis(event.shiftKey)"
+                    title="Shift+click to bypass the local cache and fetch fresh data">Run Analysis</button>
+        </div>
     </div>
 
-    <div class="card chart-box"><canvas id="comparisonChart"></canvas></div>
+    <div class="status-bar rise rise-3">
+        <div class="status-dot" id="statusDot"></div>
+        <div class="status-text" id="statusText">Ready</div>
+        <div class="progress-wrap" id="progressWrap">
+            <div class="progress-fill" id="progressBar"></div>
+        </div>
+    </div>
 
-    <div id="timelineSection" style="display:none">
-        <h2 id="focusYear" style="text-align:center; color: #f1f5f9; margin-bottom: 30px;"></h2>
-        <div class="event-grid" id="eventList"></div>
+    <div class="stats-strip" id="statsStrip">
+        <div class="stat">
+            <div class="stat-label">Years Analysed</div>
+            <div class="stat-value" id="statYears">—</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label" id="statTotalLabel">Total Incidents</div>
+            <div class="stat-value" id="statTotal">—</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Peak Year</div>
+            <div class="stat-value accent" id="statPeak">—</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Mean &plusmn; &sigma;</div>
+            <div class="stat-value" id="statMean">—</div>
+        </div>
+    </div>
+
+    <div class="verdict-strip" id="verdictStrip">
+        <div class="verdict-label" id="verdictLabel">Trajectory</div>
+        <div class="verdict-reading" id="verdictReading"></div>
+        <div class="verdict-detail" id="verdictDetail"></div>
+        <div class="verdict-caveat">REFLECTS REPORTED INCIDENT VOLUME &middot; WIKIPEDIA DOCUMENTS RECENT DECADES MORE DENSELY &middot; COMPARE WITHIN ERAS FOR BEST SIGNAL</div>
+    </div>
+
+    <div class="figure rise rise-4">
+        <div class="figure-head">
+            <div class="figure-title"><span class="fig-no">Fig. 1</span>Negative event density by year</div>
+            <div class="figure-hint">Click a bar to open the incident record for that year</div>
+        </div>
+        <div class="figure-body">
+            <div class="chart-wrap">
+                <canvas id="comparisonChart"></canvas>
+                <div class="chart-empty-overlay" id="chartEmpty">
+                    <div class="empty-glyph">&fnof;</div>
+                    <div class="empty-title">No data loaded</div>
+                    <div class="empty-sub">SET A YEAR RANGE AND RUN ANALYSIS</div>
+                </div>
+            </div>
+        </div>
+        <div class="severity-legend" id="severityLegend">
+            <div class="sev-item"><span class="sev-swatch" style="background:#d6d3d1"></span>LOW</div>
+            <div class="sev-item"><span class="sev-swatch" style="background:#a8a29e"></span>NEAR MEAN</div>
+            <div class="sev-item"><span class="sev-swatch" style="background:#d97706"></span>ELEVATED &gt; 0.5&sigma;</div>
+            <div class="sev-item"><span class="sev-swatch" style="background:#c2410c"></span>HIGH &gt; 1.25&sigma;</div>
+            <div class="sev-item"><span class="sev-swatch" style="background:#7f1d1d"></span>EXTREME &gt; 2&sigma;</div>
+        </div>
+    </div>
+
+    <div class="ledger-section" id="timelineSection">
+        <div class="figure">
+            <div class="figure-head" style="align-items:center;">
+                <div style="display:flex; align-items:baseline; gap:18px; flex-wrap:wrap;">
+                    <div class="figure-title" style="align-self:center;"><span class="fig-no">Fig. 2</span>Incident record</div>
+                    <div class="ledger-year" id="focusYear"></div>
+                    <div class="phase-tags" id="focusPhases"></div>
+                </div>
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <select id="ledgerSort" class="select" onchange="if(focusedYear!==null)showYear(focusedYear,false)">
+                        <option value="chrono">Chronological</option>
+                        <option value="toll">Highest toll</option>
+                        <option value="class">By class</option>
+                    </select>
+                    <div class="ledger-count" id="eventsCount"></div>
+                </div>
+            </div>
+            <div class="ledger-rows" id="eventList"></div>
+        </div>
     </div>
 
     <footer class="footer">
-        <p>&copy; <span id="currentYear"></span> NEDI Negative Event Density Index. MIT License.</p>
-<p>&copy; <span id="currentYear"></span> <strong>Jamie A. Gostt</strong> | NEDI Negative Event Density Index</p>
-    <p>Code: <a href="#" style="color:#94a3b8">MIT</a> | Research & Logic: <a href="#" style="color:#94a3b8">CC BY 4.0</a></p>
-    <p style="margin-top:10px; opacity:0.7;">Data sourced via Wikipedia API. Sentiment analysis is algorithmic and for research purposes only.</p>
-    <p style="margin-top:10px; opacity:0.7;">NB: Sentiment Analysis can be Incorrect. Data Accuracy Relies on the Quality and Sentiment of Reported Events.</p>
+        <div>&copy; <span id="currentYear"></span> JAMIE A. GOSTT — NEDI</div>
+        <div><a href="#">MIT LICENSE</a> &nbsp;/&nbsp; <a href="#">CC BY 4.0</a></div>
+        <div>DATA VIA WIKIPEDIA MEDIAWIKI API · RESEARCH USE ONLY</div>
     </footer>
 </div>
 
 <script>
     document.getElementById('currentYear').textContent = new Date().getFullYear();
+    document.getElementById('mastheadDate').textContent =
+        new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: '2-digit' }).toUpperCase();
 
     function toggleAbout() {
-        const modal = document.getElementById('aboutModal');
-        modal.style.display = (modal.style.display === 'block') ? 'none' : 'block';
+        document.getElementById('aboutModal').classList.toggle('open');
     }
 
-    const CRISIS_KEYS = ["killed", "death", "dead", "attack", "war", "crisis", "bomb", "shooting", "riot", "fatal", "recession", "pandemic", "covid", "clash", "nuclear", "battle"];
-    const ABBR_REGEX = /(?<!\b(?:U\.S|U\.N|D\.C|Jan|Feb|Mar|Apr|Aug|Sept|Oct|Nov|Dec|No|St|Dr|Prof|Mr|Mrs|Ms|vs))\.\s+(?=[A-Z0-9])/;
+    // Crisis vocabulary split by cause, so events can be filtered by class.
+    // Human-driven: violence, political, economic, technological.
+    const KEYS_HUMAN = [
+        "war","attack","bomb","shooting","riot","battle","massacre","siege",
+        "assassination","assassinated","genocide","terror","coup","invasion",
+        "uprising","revolutionary","hostage","clash","conflict","nuclear",
+        "recession","crisis","poisoning","crash","collapse","explosion",
+        "sank","sunk","hijack","execution","executed","bombardment","lynching"
+    ];
+    // Non-human: geophysical, weather, disease.
+    const KEYS_NATURAL = [
+        "earthquake","hurricane","tsunami","flood","drought","famine",
+        "pandemic","covid","outbreak","epidemic","cholera","influenza",
+        "eruption","volcanic","volcano","mudslide","avalanche",
+        "wildfire","cyclone","typhoon","tornado","blizzard","monsoon","disease"
+    ];
+    // Outcome words that flag negativity but don't determine the class.
+    const KEYS_GENERIC = ["kill","death","dead","fatal","casualties","disaster"];
+
+    // Word-boundary matching so "software" doesn't match "war", "patriot" doesn't
+    // match "riot" — but with common inflections allowed so "attacks", "bombing",
+    // "killed", "wars", "massacred" etc. still count. Keys ending in 'e' drop it
+    // before -ed/-ing ("massacre" → "massacred").
+    const toPatterns = keys => keys.map(k => {
+        const stem = k.endsWith('e')
+            ? k.slice(0, -1) + '(?:e|es|ed|ing)'
+            : k + '(?:s|es|ed|ing)?';
+        return new RegExp('\\b' + stem + '\\b', 'i');
+    });
+    const HUMAN_PATTERNS   = toPatterns(KEYS_HUMAN);
+    const NATURAL_PATTERNS = toPatterns(KEYS_NATURAL);
+    const GENERIC_PATTERNS = toPatterns(KEYS_GENERIC);
+    // "landslide" only in the geological sense — not "landslide victory/election".
+    NATURAL_PATTERNS.push(/\blandslides?\b(?!\s+(?:victory|victories|win|wins|election|elections|majority|defeat|re-?election))/i);
+
+    // Response/relief actions are consequences of a crisis, not negative events —
+    // keeping the index strictly negative. Always excluded, even when the entry
+    // itself mentions the crisis ("recovery fund to rebuild economies impacted
+    // by the pandemic").
+    const RESPONSE_REGEX = /\b(?:recovery fund|relief (?:fund|package|bill|effort)|stimulus|aid package|vaccin\w+|donat\w+|pledg\w+|agree(?:s)? to (?:create|establish|provide)|video call|peace (?:deal|talks|agreement))\b/i;
+
+    // Procedural/civic entries (elections, summits, ceremonies) that only match
+    // through an inherited crisis context — e.g. an election listed under a
+    // "COVID-19 pandemic" parent bullet — are not negative events themselves.
+    const PROCEDURAL_REGEX = /\b(?:elections?|voting|referendum|summits?|talks|meeting|conference|ceremon\w+|anniversar\w+|commemorat\w+|celebrat\w+|inaugurat\w+|appoint\w+|sworn in|rally|rallies)\b/i;
+
+    // ── Death-toll extraction (heuristic, text-derived) ────────────────────
+    // Incident phrasing ("killing at least 944") is summed per year; cumulative
+    // milestone phrasing ("death toll exceeds 500,000") takes the year's max so
+    // repeated running totals aren't double-counted.
+    const TOLL_NUM  = '((?:\\d[\\d,]*(?:\\.\\d+)?)(?:\\s*(?:million|billion))?)';
+    const TOLL_QUAL = '(?:at least|about|approximately|around|over|more than|up to|some|nearly|an estimated|estimated)?\\s*';
+    const TOLL_PATTERNS = [
+        { re: new RegExp('death toll[^.;]*?(?:exceeds|surpasses|passes|reaches|rises to|tops)\\s+' + TOLL_QUAL + TOLL_NUM, 'i'), cum: true },
+        { re: new RegExp('\\bkill(?:s|ed|ing)\\b\\s+' + TOLL_QUAL + TOLL_NUM, 'i'), cum: false },
+        { re: new RegExp(TOLL_NUM + '\\s+(?:people|persons|others|civilians|soldiers|residents|miners|passengers|villagers)?\\s*(?:are|were|is|was)?\\s*(?:killed|dead|die|dies|died)\\b', 'i'), cum: false },
+        { re: new RegExp('leav(?:es|ing)\\s+' + TOLL_QUAL + TOLL_NUM + '\\s+(?:people\\s+)?dead', 'i'), cum: false },
+        { re: new RegExp(TOLL_NUM + '\\s+(?:deaths|fatalities)', 'i'), cum: false }
+    ];
+
+    function parseTollNumber(s) {
+        let mult = 1;
+        if (/billion/i.test(s)) mult = 1e9;
+        else if (/million/i.test(s)) mult = 1e6;
+        return Math.round(parseFloat(s.replace(/,/g, '')) * mult);
+    }
+
+    function extractDeathToll(text) {
+        for (const { re, cum } of TOLL_PATTERNS) {
+            const m = re.exec(text);
+            if (m) {
+                const v = parseTollNumber(m[1]);
+                if (v > 0 && isFinite(v)) return { toll: v, cum };
+            }
+        }
+        return { toll: 0, cum: false };
+    }
+
+    // Per-event tolls for one year: incident figures summed, cumulative
+    // milestones reduced to the year's maximum running total.
+    function tollParts(evts) {
+        let sum = 0, cumMax = 0;
+        for (const e of evts) {
+            if (!e.toll) continue;
+            if (e.cum) cumMax = Math.max(cumMax, e.toll);
+            else sum += e.toll;
+        }
+        return { sum, cumMax };
+    }
+
+    // Matches sentence-ending periods while skipping known abbreviations and single-letter
+    // initials/shorthands (e.g. "b. 1920", "d. 2004", "A. Smith") that caused text truncation.
+    const ABBR_REGEX = /(?<!\b(?:U\.S|U\.N|D\.C|Jan|Feb|Mar|Apr|Aug|Sept|Oct|Nov|Dec|No|St|Dr|Prof|Mr|Mrs|Ms|vs|[A-Za-z]))\.\s+(?=[A-Z0-9])/;
 
     const HISTORICAL_PHASES = [
-        { label: 'WW1', start: 1914, end: 1918, color: 'rgba(225, 29, 72, 0.2)' },
-        { label: 'Great Depression', start: 1929, end: 1939, color: 'rgba(251, 113, 133, 0.12)' },
-        { label: 'WW2', start: 1939, end: 1945, color: 'rgba(225, 29, 72, 0.2)' },
-        { label: 'Cold War', start: 1947, end: 1991, color: 'rgba(71, 85, 105, 0.08)' },
-        { label: 'COVID-19', start: 2020, end: 2022, color: 'rgba(225, 29, 72, 0.2)' }
+        { label: 'WW1',              start: 1914, end: 1918, color: 'rgba(159,29,32,0.05)'   },
+        { label: 'Great Depression', start: 1929, end: 1939, color: 'rgba(217,119,6,0.05)'   },
+        { label: 'WW2',              start: 1939, end: 1945, color: 'rgba(159,29,32,0.05)'   },
+        { label: 'Cold War',         start: 1947, end: 1991, color: 'rgba(87,83,78,0.05)'    },
+        { label: 'COVID-19',         start: 2020, end: 2022, color: 'rgba(159,29,32,0.05)'   }
     ];
+
+    const FETCH_CONCURRENCY = 6;
+
+    // ── Local cache ────────────────────────────────────────────────────────
+    // Tiered expiry balances freshness against refetching: article edits to a
+    // year page land within the TTL window for that era. Bump CACHE_VERSION
+    // whenever parsing/classification logic changes — old entries are purged.
+    const CACHE_VERSION = 'v4';
+    const cacheKey = year => `nedi:${CACHE_VERSION}:${year}`;
+
+    function cacheTTL(year) {
+        const now = new Date().getFullYear();
+        if (year >= now - 1)  return 24 * 3600e3;       // current era: 24 h
+        if (year >= now - 10) return 7  * 24 * 3600e3;  // last decade: 7 days
+        return 30 * 24 * 3600e3;                        // historical: 30 days
+    }
+
+    function readCache(year) {
+        try {
+            const raw = localStorage.getItem(cacheKey(year));
+            if (!raw) return null;
+            const o = JSON.parse(raw);
+            if (Date.now() - o.ts > cacheTTL(year)) return null;
+            return o.events;
+        } catch (_) { return null; }
+    }
+
+    function writeCache(year, events) {
+        if (!events.length) return;  // never cache empty results (may be a network failure)
+        try {
+            localStorage.setItem(cacheKey(year), JSON.stringify({ ts: Date.now(), events }));
+        } catch (_) {
+            // Quota exceeded — drop all NEDI entries and retry once.
+            try {
+                Object.keys(localStorage)
+                    .filter(k => k.startsWith('nedi:'))
+                    .forEach(k => localStorage.removeItem(k));
+                localStorage.setItem(cacheKey(year), JSON.stringify({ ts: Date.now(), events }));
+            } catch (_) {}
+        }
+    }
+
+    // Purge entries left over from older parser versions.
+    try {
+        Object.keys(localStorage).forEach(k => {
+            if (k.startsWith('nedi:') && !k.startsWith(`nedi:${CACHE_VERSION}:`))
+                localStorage.removeItem(k);
+        });
+    } catch (_) {}
 
     let globalStore = {};
     let currentLabels = [];
     let currentCounts = [];
     let chart;
+    let running = false;
+    let focusedYear = null;
 
-    async function runGlobalAnalysis() {
+    async function runGlobalAnalysis(force = false) {
+        if (running) return;
         const start = +document.getElementById('startYear').value;
-        const end = +document.getElementById('endYear').value;
+        const end   = +document.getElementById('endYear').value;
+        if (isNaN(start) || isNaN(end) || end < start) { alert('Invalid year range.'); return; }
+
         const totalYears = end - start + 1;
+        if (totalYears > 300 && !confirm(`Analysing ${totalYears} years will make many API calls. Proceed?`)) return;
 
-        if (totalYears > 150) {
-            if (!confirm(`Analysis of ${totalYears} years requested. Proceed with stabilization delay?`)) return;
+        const statusEl  = document.getElementById('statusText');
+        const statusDot = document.getElementById('statusDot');
+        const pBar      = document.getElementById('progressBar');
+        const pWrap     = document.getElementById('progressWrap');
+        const runBtn    = document.getElementById('runBtn');
+
+        running = true;
+        runBtn.disabled = true;
+        runBtn.textContent = 'Analysing…';
+        pWrap.classList.add('active');
+        document.getElementById('exportRow').classList.remove('visible');
+        document.getElementById('statsStrip').classList.remove('visible');
+        document.getElementById('verdictStrip').classList.remove('visible');
+        statusDot.className = 'status-dot active';
+
+        globalStore = {}; currentLabels = []; currentCounts = []; focusedYear = null;
+        document.getElementById('chartEmpty').style.display = 'flex';
+        document.getElementById('timelineSection').classList.remove('visible');
+        if (chart) { chart.destroy(); chart = null; }
+
+        // Fetch years with a small worker pool — order is preserved via index.
+        const years   = Array.from({ length: totalYears }, (_, i) => start + i);
+        const results = new Array(totalYears);
+        let next = 0, done = 0, fromCache = 0;
+        fetchFailures = [];
+        // On big ranges, space out live requests so the burst doesn't trip
+        // Wikipedia's throttling. Cache hits are never delayed.
+        const politeDelay = totalYears > 200 ? 100 : 0;
+
+        async function worker() {
+            while (next < years.length) {
+                const i = next++;
+                const cached = force ? null : readCache(years[i]);
+                if (cached) {
+                    results[i] = cached;
+                    fromCache++;
+                } else {
+                    results[i] = await fetchYearData(years[i]);
+                    writeCache(years[i], results[i]);
+                    if (politeDelay) await sleep(politeDelay);
+                }
+                done++;
+                statusEl.textContent = `Parsing ${years[i]} — ${done}/${totalYears}`;
+                pBar.style.width = `${(done / totalYears) * 100}%`;
+            }
         }
 
-        const status = document.getElementById('status');
-        const pBar = document.getElementById('progressBar');
-        const pCont = document.getElementById('progressContainer');
-        const csvBtn = document.getElementById('exportCsvBtn');
-        const allBtn = document.getElementById('exportAllBtn');
-        
-        pCont.style.display = 'block';
-        csvBtn.style.display = 'none';
-        allBtn.style.display = 'none';
-        globalStore = {}; currentLabels = []; currentCounts = [];
+        // Huge ranges run fewer workers — slower but far less likely to trip
+        // the rate limiter in the first place.
+        const workerCount = Math.min(totalYears > 300 ? 4 : FETCH_CONCURRENCY, totalYears);
+        await Promise.all(Array.from({ length: workerCount }, worker));
 
-        for(let i = 0; i < totalYears; i++) {
-            const y = start + i;
-            status.innerText = `Parsing ${y}...`;
-            pBar.style.width = `${((i + 1) / totalYears) * 100}%`;
+        // Mop-up pass: anything that failed gets one slow, sequential retry
+        // after a cooldown — this catches whole blocks lost to a throttle
+        // episode during the main run.
+        if (fetchFailures.length) {
+            const retryYears = [...fetchFailures];
+            fetchFailures = [];
+            statusEl.textContent = `Cooling down, then retrying ${retryYears.length} throttled years…`;
+            await sleep(6000);
+            for (const y of retryYears) {
+                statusEl.textContent = `Retrying ${y}…`;
+                const i = years.indexOf(y);
+                results[i] = await fetchYearData(y);
+                writeCache(y, results[i]);
+                await sleep(300);
+            }
+        }
 
-            const data = await fetchYearData(y);
-            globalStore[y] = data;
+        years.forEach((y, i) => {
+            globalStore[y] = results[i];
             currentLabels.push(y);
-            currentCounts.push(data.length);
-
-            if (totalYears > 150) await new Promise(r => setTimeout(r, 100));
-        }
+        });
+        // Counts respect whatever metric and event-class filter are selected.
+        currentCounts = computeSeries();
 
         renderChart();
-        status.innerText = "Complete.";
-        pCont.style.display = 'none';
-        csvBtn.style.display = 'inline-block';
-        allBtn.style.display = 'inline-block';
+        renderStats();
+        const failNote = fetchFailures.length
+            ? ` — ${fetchFailures.length} year${fetchFailures.length > 1 ? 's' : ''} failed (run again to retry: cached years skip instantly)`
+            : '';
+        statusEl.textContent = `Complete — ${totalYears} years analysed` +
+            (fromCache ? ` (${fromCache} from cache)` : '') + failNote;
+        statusDot.className = fetchFailures.length ? 'status-dot warn' : 'status-dot done';
+        pWrap.classList.remove('active');
+        document.getElementById('exportRow').classList.add('visible');
+        runBtn.disabled = false;
+        runBtn.textContent = 'Run Analysis';
+        running = false;
     }
+
+    // Enter key in either year input triggers analysis.
+    ['startYear', 'endYear'].forEach(id => {
+        document.getElementById(id).addEventListener('keydown', e => {
+            if (e.key === 'Enter') runGlobalAnalysis();
+        });
+    });
 
     function getWikipediaYearTitle(year) {
-    // There is no year 0 in the AD/BC year system used by Wikipedia year pages.
-    // (1 BC is followed directly by AD 1.)
-    if (year === 0) return null; // skip / treat as invalid
-
-    // Optional: support BC if you ever pass negative years (e.g. -44 => "44 BC")
-    if (year < 0) return `${Math.abs(year)} BC`;
-
-    // Key fix: Wikipedia switches to "AD N" style for early AD years (e.g., AD 150).
-    if (year <= 150) return `AD ${year}`;
-
-    return String(year);
+        if (year === 0) return null;
+        if (year < 0) return `${Math.abs(year)} BC`;
+        if (year <= 150) return `AD ${year}`;
+        return String(year);
     }
 
-    async function fetchYearData(year) {
-    try {
-        const title = getWikipediaYearTitle(year);
-        if (!title) return []; // e.g. year 0
+    // Sections of Wikipedia year pages that never contain historical events.
+    // Used in the fallback path when no Events heading is found.
+    const EXCLUDED_SECTIONS = new Set([
+        'Births','Deaths','Death','Casualties',
+        'Nobel Prizes','Nobel Prize','Nobel Prize winners','Nobel Prizes awarded',
+        'Awards','Prizes','Holidays and observances','Holidays','Observances',
+        'World leaders','Incumbents','Heads of state',
+        'References','See also','External links','Further reading',
+        'Footnotes','Notes','Bibliography','Sources'
+    ]);
 
-        const url = "https://en.wikipedia.org/w/api.php?" + new URLSearchParams({
-        action: "parse",
-        page: title,
-        prop: "text",
-        format: "json",
-        origin: "*",
-        redirects: "1", // crucial: follow redirects if the title redirects
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    let fetchFailures = [];   // years that failed after all retries, per run
+
+    // Shared throttle gate: when Wikipedia throttles one request, every worker
+    // pauses together until the cooldown passes. Without this, six workers
+    // each burn their retries inside the same throttle window and a whole
+    // contiguous block of years fails at once.
+    let throttleUntil = 0;
+    let throttleCooldown = 5000;
+
+    // Single computed sleep, not a polling loop — background tabs clamp each
+    // setTimeout to ~1/min, so fewer timers means throttled tabs still finish.
+    async function throttleGate() {
+        const wait = throttleUntil - Date.now();
+        if (wait > 0) await sleep(wait);
+    }
+
+    function tripThrottle() {
+        const now = Date.now();
+        if (now >= throttleUntil) {  // escalate once per episode, not per worker
+            throttleUntil = now + throttleCooldown;
+            throttleCooldown = Math.min(throttleCooldown * 2, 60000);
+        }
+    }
+
+    // Fetch the raw wikitext for a year page via action=query&prop=revisions.
+    // Compared to action=parse&prop=text (rendered HTML):
+    //   • ~10× smaller payload
+    //   • No DOMParser / DOM traversal needed
+    //   • Section boundaries are trivial to detect with regex
+    //
+    // Transient failures (throttling 429/503, maxlag, network errors) are
+    // retried with exponential backoff — without this, large ranges showed
+    // silent blank spans where a burst of requests got throttled.
+    async function fetchYearData(year) {
+        const title = getWikipediaYearTitle(year);
+        if (!title) return [];
+
+        const url = 'https://en.wikipedia.org/w/api.php?' + new URLSearchParams({
+            action:    'query',
+            titles:    title,
+            prop:      'revisions',
+            rvprop:    'content',
+            rvslots:   'main',
+            format:    'json',
+            origin:    '*',
+            redirects: '1',
+            maxlag:    '5'
         });
 
-        const res = await fetch(url);
-        const json = await res.json();
+        for (let attempt = 0; attempt < 5; attempt++) {
+            await throttleGate();  // wait out any active cooldown before trying
+            try {
+                const res = await fetch(url);
 
-        const html = json?.parse?.text?.["*"];
-        if (!html) return [];
+                if (res.status === 429 || res.status === 503) {
+                    // Throttled — honour Retry-After if exposed, else trip the
+                    // shared gate so every worker backs off together.
+                    const ra = parseInt(res.headers.get('Retry-After'), 10);
+                    if (!isNaN(ra)) throttleUntil = Math.max(throttleUntil, Date.now() + ra * 1000);
+                    else tripThrottle();
+                    continue;
+                }
+                if (!res.ok) { tripThrottle(); continue; }
 
-        const doc = new DOMParser().parseFromString(html, "text/html");
+                const json = await res.json();
+                if (json.error?.code === 'maxlag') {  // servers lagging — be polite
+                    tripThrottle();
+                    continue;
+                }
 
-        let yearEvents = [];
-        const container = doc.querySelector(".mw-parser-output");
-        if (!container) return [];
+                throttleCooldown = 5000;  // healthy response — reset escalation
 
-        container.querySelectorAll(":scope > ul > li").forEach(li => walk(li, [], yearEvents));
-        return yearEvents.filter((v, i, a) => a.findIndex(t => t.body === v.body) === i);
-    } catch (e) {
+                const pages = json?.query?.pages;
+                if (!pages) return [];
+                const page = Object.values(pages)[0];
+                if (!page || page.missing !== undefined) return [];  // page genuinely absent
+
+                // Support both new rvslots format and legacy format
+                const wikitext = page.revisions?.[0]?.slots?.main?.['*'] ||
+                                 page.revisions?.[0]?.['*'] || '';
+                if (!wikitext) return [];
+
+                const events = parseWikitextEvents(wikitext);
+                return events.filter((v, i, a) => a.findIndex(t => t.body === v.body) === i);
+            } catch (_) {
+                tripThrottle();  // network-level rejection — treat as throttling
+            }
+        }
+
+        fetchFailures.push(year);
         return [];
     }
+
+    // Convert raw wikitext markup to readable plain text.
+    function stripWikiMarkup(raw) {
+        let t = raw;
+        t = t.replace(/<!--[\s\S]*?-->/g, '');                          // HTML comments
+        t = t.replace(/\[\[(?:[^\]|]+\|)?([^\]|]+)\]\]/g, '$1');       // [[link|text]] or [[link]]
+        t = t.replace(/\[https?:\/\/[^\s\]]*\s*([^\]]*)\]/g, '$1');    // [http://... text]
+        // Templates that carry visible content — render as text before generic removal
+        t = t.replace(/{{\s*OldStyleDate\w*\s*\|\s*([^|}]+)[^}]*}}/gi, '$1');      // {{OldStyleDate|Nov 7|…}}
+        t = t.replace(/{{\s*ship\s*\|\s*([^|}]*)\|\s*([^|}]+)[^}]*}}/gi, '$1 $2'); // {{ship|HMS|Name|id}}
+        t = t.replace(/{{\s*(HMS|HMAS|HMCS|HMNZS|HMT|USS|USAT|USCGC|SS|RMS|SMS|MV|MS|PS)\s*\|\s*([^|}]+)[^}]*}}/g,
+                      '$1 $2');                                                     // {{HMS|Name|pennant}}
+        t = t.replace(/{{\s*convert\s*\|\s*([^|}]+)\|\s*([^|}]+)[^}]*}}/gi, '$1 $2'); // {{convert|7.9|Mw|…}}
+        for (let i = 0; i < 3; i++) t = t.replace(/{{[^{}]*}}/g, ''); // remaining templates (3 passes for nesting)
+        t = t.replace(/[{}]+/g, '');                                    // orphaned braces after template strip
+        t = t.replace(/'''?([^']+)'''?/g, '$1');                        // bold / italic
+        t = t.replace(/<ref[^/]*\/>/g, '');                             // <ref />
+        t = t.replace(/<ref[^>]*>[\s\S]*?<\/ref>/g, '');               // <ref>…</ref>
+        t = t.replace(/<[^>]+>/g, '');                                  // remaining HTML tags
+        t = t.replace(/\[\d+\]/g, '');                                  // citation [1]
+        t = t.replace(/&nbsp;/g, ' ').replace(/&ndash;|&#8211;/g, '–')
+             .replace(/&mdash;|&#8212;/g, '—').replace(/&amp;/g, '&')
+             .replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+        t = t.replace(/\s+/g, ' ').trim();
+        return t.replace(/^[,;:–—-]\s*/, '');  // leading punctuation left by removed templates
     }
 
-    function walk(li, stack, collector) {
-        let text = "";
-        for (let node of li.childNodes) {
-            if (node.nodeType === 3 || (node.nodeType === 1 && !['UL','OL'].includes(node.tagName))) text += node.textContent;
-            else if (['UL','OL'].includes(node.tagName)) break;
+    // Detect list items that are not historical events.
+    function isNonEvent(text) {
+        return (
+            // Biographical list entries: (b. 1888), (d. 2004), or truncated (b.
+            /\([bd]\.\s*\d|\(born\s+\d|\(died\s+\d/i.test(text) ||
+            /\([bd]\.\s*$/.test(text) ||
+            // Nobel Prize "not awarded" stubs (WW1/WW2 suspension years)
+            /^(physics|chemistry|medicine|literature|peace|economics)\s*[–\-]\s*not awarded/i.test(text) ||
+            // Academic bibliography lines: "Surname, First" or "Surname. First" + year in parens
+            // Exclude entries that look like dated events (month name or "Day –")
+            (/^[A-Z][a-z]+[.,]\s+[A-Z]/.test(text) && /\(\d{4}\)/.test(text) &&
+             !/\b(?:January|February|March|April|May|June|July|August|September|October|November|December|\d+\s*[–\-])\b/.test(text))
+        );
+    }
+
+    // Parse negative historical events directly from raw wikitext.
+    // Section structure in Wikipedia year pages:
+    //   == Events ==          ← we want everything under this
+    //   === January ===       ← H3 sub-sections stay inside Events
+    //   * [[Jan 15]] – Event  ← depth-1 bullet
+    //   ** Sub-detail         ← depth-2 (context for deeper items)
+    //   == Births ==          ← next H2 ends the Events section
+    function parseWikitextEvents(wikitext) {
+        const events = [];
+
+        // ── 1. Isolate the Events section ──────────────────────────────────────
+        const eventHeadRe = /^={2,3}\s*(?:Notable\s+)?Events?(?:\s+and\s+[^=]*)?\s*={2,3}/im;
+        const nextH2Re    = /^==\s*[^=]/m;
+
+        let section = '';
+        const headMatch = eventHeadRe.exec(wikitext);
+
+        if (headMatch) {
+            const tail   = wikitext.slice(headMatch.index + headMatch[0].length);
+            const nextH2 = nextH2Re.exec(tail);
+            section = nextH2 ? tail.slice(0, nextH2.index) : tail;
+        } else {
+            // Fallback: strip known non-event sections, use the remainder.
+            // Headings are kept — the walk below tracks them as context.
+            const excludeRe = new RegExp(
+                '={2,}\\s*(?:' +
+                [...EXCLUDED_SECTIONS].map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') +
+                ')\\s*={2,}[\\s\\S]*?(?=\\n==\\s|$)',
+                'gi'
+            );
+            section = wikitext.replace(excludeRe, '');
         }
-        text = text.replace(/\[\d+\]/g, '').trim();
-        const sub = li.querySelector('ul, ol');
-        if (sub) {
-            const nextStack = [...stack];
-            if (text) nextStack.push(text.replace(/:$/, ''));
-            sub.querySelectorAll(':scope > li').forEach(s => walk(s, nextStack, collector));
-        } else if (text.length > 10) {
-            const isNeg = CRISIS_KEYS.some(k => text.toLowerCase().includes(k)) || 
-                          stack.some(c => CRISIS_KEYS.some(k => c.toLowerCase().includes(k)));
+
+        // ── 2. Walk lines: bullets everywhere; prose too on pages without an
+        //       Events heading (pre-modern years use regional prose sections
+        //       like "== Europe ==" with paragraphs instead of bullet lists).
+        const ctxStack = []; // text at each bullet depth, for context propagation
+        const proseMode = !headMatch;
+        let heading = '';
+
+        for (const line of section.split('\n')) {
+            const hm = /^=+\s*([^=].*?)\s*=+\s*$/.exec(line);
+            if (hm) { heading = hm[1].replace(/'''?/g, '').trim(); continue; }
+
+            const m = line.match(/^(\*+)\s*(.+)/);
+            if (!m) {
+                if (proseMode) parseProseLine(line, heading, events);
+                continue;
+            }
+
+            const depth = m[1].length;
+            const text  = stripWikiMarkup(m[2]);
+
+            if (text.length < 10 || isNonEvent(text)) {
+                ctxStack.length = Math.min(ctxStack.length, depth - 1);
+                continue;
+            }
+
+            const ctx    = ctxStack.slice(0, depth - 1).filter(Boolean);
+            const ctxStr = ctx.join(' ');
+
+            // Negativity: own-text matches count unless the entry is a response/
+            // relief action; context-only matches (inherited from a parent bullet
+            // like "COVID-19 pandemic:") must also not be procedural/civic.
+            const anyMatch = (str) =>
+                HUMAN_PATTERNS.some(p => p.test(str))   ||
+                NATURAL_PATTERNS.some(p => p.test(str)) ||
+                GENERIC_PATTERNS.some(p => p.test(str));
+
+            // A leading crisis label ("COVID-19 pandemic: Thousands rally…") is
+            // context, not the event itself — split it off so procedural entries
+            // filed under a crisis heading don't pass on the label's keywords.
+            let ownText = text, prefixCtx = '';
+            const pm = /^([^:]{3,60}):\s+(.+)$/.exec(text);
+            if (pm && anyMatch(pm[1])) { ownText = pm[2]; prefixCtx = pm[1]; }
+            const ctxAll = (ctxStr + ' ' + prefixCtx).trim();
+
+            let isNeg = false;
+            if (anyMatch(ownText)) {
+                isNeg = !RESPONSE_REGEX.test(text);
+            } else if (ctxAll && anyMatch(ctxAll)) {
+                isNeg = !PROCEDURAL_REGEX.test(ownText) && !RESPONSE_REGEX.test(text);
+            }
+
             if (isNeg) {
+                // Classify against text + inherited context. Generic outcome words
+                // ("killed", "disaster") default to human class, since unclassified
+                // fatal incidents are usually accidents/violence.
+                const hay = ctxStr ? text + ' ' + ctxStr : text;
+                const hum = HUMAN_PATTERNS.some(p => p.test(hay));
+                const nat = NATURAL_PATTERNS.some(p => p.test(hay));
+
                 const parts = text.split(ABBR_REGEX);
                 let body = parts[0];
-                if (body.length < 40 && parts.length > 1) body = parts[0] + '. ' + parts[1];
-                collector.push({ body: body.endsWith('.') ? body : body + '.', context: stack.join(' → ') });
+                if (body.length < 40 && parts.length > 1) body = body + '. ' + parts[1];
+
+                const { toll, cum } = extractDeathToll(text);
+                events.push({
+                    body:    body.endsWith('.') ? body : body + '.',
+                    context: ctx.join(' → '),
+                    type:    nat && hum ? 'both' : nat ? 'natural' : 'human',
+                    toll, cum
+                });
             }
+
+            ctxStack[depth - 1] = text;
+            ctxStack.length = depth;
+        }
+
+        return events;
+    }
+
+    // Parse one prose line into sentence-level events. Only used on pages
+    // without an Events heading, where history is written in paragraphs.
+    function parseProseLine(line, heading, events) {
+        const t = line.trim();
+        if (!t || /^(?:\{\{|\}\}|\||!|<|#|:|;|-{4}|\[\[(?:File|Image|Category):)/i.test(t)) return;
+        const text = stripWikiMarkup(t);
+        if (text.length < 30) return;
+
+        for (let s of text.split(ABBR_REGEX)) {
+            s = s.trim();
+            if (s.length < 25 || isNonEvent(s)) continue;
+            const neg = (HUMAN_PATTERNS.some(p => p.test(s))   ||
+                         NATURAL_PATTERNS.some(p => p.test(s)) ||
+                         GENERIC_PATTERNS.some(p => p.test(s))) &&
+                        !RESPONSE_REGEX.test(s);
+            if (!neg) continue;
+
+            const hay = heading ? s + ' ' + heading : s;
+            const hum = HUMAN_PATTERNS.some(p => p.test(hay));
+            const nat = NATURAL_PATTERNS.some(p => p.test(hay));
+            const { toll, cum } = extractDeathToll(s);
+            events.push({
+                body:    s.endsWith('.') ? s : s + '.',
+                context: heading,
+                type:    nat && hum ? 'both' : nat ? 'natural' : 'human',
+                toll, cum
+            });
         }
     }
 
     function getMovingAverage(arr) {
-        return arr.map((val, i, a) => {
-            let sub = a.slice(Math.max(0, i - 1), Math.min(a.length, i + 2));
-            return (sub.reduce((s, v) => s + v, 0) / sub.length).toFixed(2);
+        return arr.map((_, i, a) => {
+            const sub = a.slice(Math.max(0, i - 1), Math.min(a.length, i + 2));
+            return +(sub.reduce((s, v) => s + v, 0) / sub.length).toFixed(2);
         });
     }
 
-    function exportToCSV() {
-        const trendData = getMovingAverage(currentCounts);
-        let csvContent = "data:text/csv;charset=utf-8,Year,Event_Density,Stress_Trend\n";
-        currentLabels.forEach((year, i) => {
-            csvContent += `${year},${currentCounts[i]},${trendData[i]}\n`;
+    // Toggling overlays updates the live chart in place — no destroy/rebuild,
+    // so the bars don't re-animate from zero.
+    function refreshChart() {
+        if (!chart) return;
+        chart.setDatasetVisibility(1, document.getElementById('showTrend').checked);
+        chart.options.plugins.annotation.annotations = buildAnnotations();
+        chart.update();
+    }
+
+    // ── Event-class filtering ──────────────────────────────────────────────
+    function classMatches(e, mode) {
+        if (mode === 'all') return true;
+        if (mode === 'human') return e.type === 'human' || e.type === 'both';
+        return e.type === 'natural' || e.type === 'both';   // 'natural'
+    }
+
+    function getFilteredEvents(year) {
+        const mode = document.getElementById('eventClass').value;
+        return (globalStore[year] || []).filter(e => classMatches(e, mode));
+    }
+
+    const metricMode = () => document.getElementById('metricSel').value;
+
+    // Build the per-year series for the active metric and class filter.
+    // For deaths, cumulative milestones ("death toll exceeds 6 million") are
+    // running totals — walk years in order and count only the year-over-year
+    // increase, so multi-year crises like COVID aren't recounted in full.
+    function computeSeries() {
+        if (metricMode() !== 'deaths') {
+            return currentLabels.map(y => getFilteredEvents(y).length);
+        }
+        let prevCum = 0;
+        return currentLabels.map(y => {
+            const { sum, cumMax } = tollParts(getFilteredEvents(y));
+            const delta = cumMax > 0 ? Math.max(0, cumMax - prevCum) : 0;
+            if (cumMax > prevCum) prevCum = cumMax;
+            return sum + delta;
         });
-        downloadFile(encodeURI(csvContent), "nedi_summary.csv");
     }
 
-    function exportAllData() {
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(globalStore, null, 2));
-        downloadFile(dataStr, "nedi_archive.json");
+    // Death tolls are plotted on a square-root height scale: a log axis crushes
+    // values millions apart into similar heights, while linear makes thousand-
+    // death years invisible next to pandemic years. √ keeps both readable.
+    // The chart holds transformed values; tooltips read the raw arrays.
+    let currentTrend = [];
+    const isDeaths   = () => metricMode() === 'deaths';
+    const toDisplay  = arr => isDeaths() ? arr.map(v => Math.sqrt(Math.max(0, v))) : arr;
+    const fmtBig     = n => n >= 1e6 ? +(n / 1e6).toFixed(1) + 'M'
+                          : n >= 1e3 ? +(n / 1e3).toFixed(1) + 'k' : n;
+
+    function applyFilter() {
+        if (!currentLabels.length) return;
+        currentCounts = computeSeries();
+        currentTrend  = getMovingAverage(currentCounts);
+        if (chart) {
+            chart.data.datasets[0].data  = toDisplay(currentCounts);
+            chart.data.datasets[0].label = isDeaths() ? 'Est. Deaths' : 'Event Density';
+            chart.data.datasets[1].data  = toDisplay(currentTrend);
+            applyBarColours();
+            chart.update();
+        }
+        renderStats();
+        if (focusedYear !== null) showYear(focusedYear, false);
     }
 
-    function downloadFile(uri, filename) {
-        const link = document.createElement("a");
-        link.setAttribute("href", uri);
-        link.setAttribute("download", filename);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    // ── Bar colouring: relative z-score tiers or absolute heatmap ─────────
+    const HEAT_STOPS = [[214, 211, 209], [217, 119, 6], [194, 65, 12], [127, 29, 29]];
+    // Monochrome red ramp for death tolls: pale rose → oxblood → near-black red.
+    const RED_STOPS  = [[243, 205, 201], [224, 133, 121], [185, 28, 28], [127, 29, 29], [69, 10, 10]];
+
+    function heatRGB(t, stops = HEAT_STOPS) {
+        const pos = Math.max(0, Math.min(1, t)) * (stops.length - 1);
+        const seg = Math.min(stops.length - 2, Math.floor(pos));
+        const f   = pos - seg;
+        return stops[seg].map((v, i) => Math.round(v + (stops[seg + 1][i] - v) * f));
     }
 
-    function refreshChart() { if (currentLabels.length > 0) renderChart(); }
+    function computeBarColours() {
+        const mode = document.getElementById('colourMode').value;
+        const bg = [], hover = [];
+        if (metricMode() === 'deaths') {
+            // Death tolls span orders of magnitude, so scale the ramp on log10 —
+            // a 10k year and a 1M year get visibly different reds.
+            const pos = currentCounts.filter(c => c > 0);
+            const lmin = Math.log10(Math.min(...pos, 1e12) || 1);
+            const lmax = Math.log10(Math.max(...pos, 1) || 1);
+            const span = (lmax - lmin) || 1;
+            currentCounts.forEach(c => {
+                const t = c > 0 ? (Math.log10(c) - lmin) / span : 0;
+                const [r, g, b] = heatRGB(t, RED_STOPS);
+                bg.push(`rgba(${r}, ${g}, ${b}, 0.88)`);
+                hover.push(`rgb(${Math.max(0, r - 28)}, ${Math.max(0, g - 28)}, ${Math.max(0, b - 28)})`);
+            });
+            return { bg, hover };
+        }
+        if (mode === 'heatmap') {
+            // Continuous gradient over the range's own min–max: absolute density,
+            // so mid-range years read as warm rather than neutral grey.
+            const min  = Math.min(...currentCounts);
+            const span = (Math.max(...currentCounts) - min) || 1;
+            currentCounts.forEach(c => {
+                const [r, g, b] = heatRGB((c - min) / span);
+                bg.push(`rgba(${r}, ${g}, ${b}, 0.85)`);
+                hover.push(`rgb(${Math.max(0, r - 28)}, ${Math.max(0, g - 28)}, ${Math.max(0, b - 28)})`);
+            });
+        } else {
+            // Relative: z-score tiers (stone → amber → burnt orange → oxblood).
+            const avg    = currentCounts.reduce((a, b) => a + b, 0) / currentCounts.length;
+            const stdDev = Math.sqrt(
+                currentCounts.map(c => (c - avg) ** 2).reduce((a, b) => a + b, 0) / currentCounts.length
+            ) || 1;
+            currentCounts.forEach(c => {
+                const z = (c - avg) / stdDev;
+                if      (z > 2)    { bg.push('rgba(127, 29,  29, 0.92)'); hover.push('rgb(127, 29, 29)');   }
+                else if (z > 1.25) { bg.push('rgba(194, 65,  12, 0.85)'); hover.push('rgb(194, 65, 12)');   }
+                else if (z > 0.5)  { bg.push('rgba(217, 119, 6,  0.78)'); hover.push('rgb(217, 119, 6)');   }
+                else if (z > -0.5) { bg.push('rgba(168, 162, 158, 0.75)'); hover.push('rgb(120, 113, 108)'); }
+                else               { bg.push('rgba(214, 211, 209, 0.7)');  hover.push('rgb(168, 162, 158)'); }
+            });
+        }
+        return { bg, hover };
+    }
+
+    function applyBarColours() {
+        const { bg, hover } = computeBarColours();
+        chart.data.datasets[0].backgroundColor = bg;
+        chart.data.datasets[0].hoverBackgroundColor = hover;
+        renderLegend();
+    }
+
+    function applyColourMode() {
+        if (!chart) return;
+        applyBarColours();
+        chart.update();
+    }
+
+    function renderLegend() {
+        const el = document.getElementById('severityLegend');
+        if (metricMode() === 'deaths') {
+            el.innerHTML = `
+                <div class="sev-item">LOW</div>
+                <div class="heat-scale red"></div>
+                <div class="sev-item">HIGH</div>
+                <div class="sev-item" style="margin-left:auto">EST. DEATHS &middot; LOG COLOUR SCALE &middot; &radic; HEIGHT SCALE</div>`;
+            return;
+        }
+        if (document.getElementById('colourMode').value === 'heatmap') {
+            el.innerHTML = `
+                <div class="sev-item">LOW</div>
+                <div class="heat-scale"></div>
+                <div class="sev-item">HIGH</div>
+                <div class="sev-item" style="margin-left:auto">ABSOLUTE COUNT &middot; SCALED TO RANGE MIN&ndash;MAX</div>`;
+        } else {
+            el.innerHTML = `
+                <div class="sev-item"><span class="sev-swatch" style="background:#d6d3d1"></span>LOW</div>
+                <div class="sev-item"><span class="sev-swatch" style="background:#a8a29e"></span>NEAR MEAN</div>
+                <div class="sev-item"><span class="sev-swatch" style="background:#d97706"></span>ELEVATED &gt; 0.5&sigma;</div>
+                <div class="sev-item"><span class="sev-swatch" style="background:#c2410c"></span>HIGH &gt; 1.25&sigma;</div>
+                <div class="sev-item"><span class="sev-swatch" style="background:#7f1d1d"></span>EXTREME &gt; 2&sigma;</div>`;
+        }
+    }
+
+    function buildAnnotations() {
+        if (!document.getElementById('showPhases').checked) return [];
+        const first = currentLabels[0];
+        const last  = currentLabels[currentLabels.length - 1];
+        return HISTORICAL_PHASES
+            .filter(p => p.start <= last && p.end >= first)
+            .map(p => {
+                const s = currentLabels.indexOf(p.start);
+                const e = currentLabels.indexOf(p.end);
+                return {
+                    type: 'box',
+                    xMin: s === -1 ? -0.5 : s - 0.5,
+                    xMax: e === -1 ? currentLabels.length - 0.5 : e + 0.5,
+                    backgroundColor: p.color,
+                    borderWidth: 0,
+                    label: {
+                        display: true, content: p.label, position: 'start',
+                        color: '#a8a29e',
+                        font: { size: 9, weight: '600', family: 'IBM Plex Mono' },
+                        yAdjust: 8
+                    }
+                };
+            });
+    }
+
+    function renderStats() {
+        const total = currentCounts.reduce((a, b) => a + b, 0);
+        const avg   = total / currentCounts.length;
+        const std   = Math.sqrt(
+            currentCounts.map(c => (c - avg) ** 2).reduce((a, b) => a + b, 0) / currentCounts.length
+        );
+        const peakIdx = currentCounts.indexOf(Math.max(...currentCounts));
+
+        const deaths = metricMode() === 'deaths';
+        document.getElementById('statTotalLabel').textContent =
+            deaths ? 'Est. Deaths (text-derived)' : 'Total Incidents';
+        document.getElementById('statYears').textContent = currentLabels.length;
+        document.getElementById('statTotal').textContent = total.toLocaleString();
+        document.getElementById('statPeak').innerHTML =
+            `${currentLabels[peakIdx]}<small>${currentCounts[peakIdx].toLocaleString()} ${deaths ? 'DEATHS' : 'EVENTS'}</small>`;
+        document.getElementById('statMean').innerHTML =
+            `${avg.toFixed(1)}<small>&plusmn; ${std.toFixed(1)}</small>`;
+        document.getElementById('statsStrip').classList.add('visible');
+        renderVerdict();
+    }
+
+    // Least-squares linear fit: slope in events/year and R² goodness of fit.
+    function linearFit(xs, ys) {
+        const n  = xs.length;
+        const mx = xs.reduce((a, b) => a + b, 0) / n;
+        const my = ys.reduce((a, b) => a + b, 0) / n;
+        let sxy = 0, sxx = 0, syy = 0;
+        for (let i = 0; i < n; i++) {
+            const dx = xs[i] - mx, dy = ys[i] - my;
+            sxy += dx * dy; sxx += dx * dx; syy += dy * dy;
+        }
+        return {
+            slope: sxx ? sxy / sxx : 0,
+            r2:    (sxx && syy) ? (sxy * sxy) / (sxx * syy) : 0
+        };
+    }
+
+    // "Is the world getting worse?" — compares the second half of the loaded
+    // range against the first half, plus a linear trend across the whole range.
+    // Respects the active event-class filter.
+    function renderVerdict() {
+        const strip = document.getElementById('verdictStrip');
+        if (currentLabels.length < 6) { strip.classList.remove('visible'); return; }
+
+        const n    = currentLabels.length;
+        const half = Math.floor(n / 2);
+        const mean = arr => arr.reduce((a, b) => a + b, 0) / arr.length;
+        const m1 = mean(currentCounts.slice(0, half));
+        const m2 = mean(currentCounts.slice(n - half));
+        const pct = m1 ? ((m2 - m1) / m1) * 100 : 0;
+        const { slope, r2 } = linearFit(currentLabels, currentCounts);
+
+        let dir, cls, glyph;
+        if      (pct > 10)  { dir = 'Deteriorating';  cls = 'worse';  glyph = '&#8599;'; }
+        else if (pct < -10) { dir = 'Improving';      cls = 'better'; glyph = '&#8600;'; }
+        else                { dir = 'Broadly stable'; cls = 'flat';   glyph = '&#8594;'; }
+
+        const clsLabel = { all: 'all events', human: 'human events', natural: 'non-human events' }
+            [document.getElementById('eventClass').value];
+        const unit = metricMode() === 'deaths' ? 'est. deaths' : 'incidents';
+        const fmt  = v => Math.abs(v) >= 1000 ? Math.round(v).toLocaleString() : v.toFixed(1);
+        const y = currentLabels;
+
+        strip.className = `verdict-strip visible ${cls}`;
+        document.getElementById('verdictLabel').textContent =
+            `Trajectory · ${y[0]}–${y[n - 1]} · ${clsLabel} · ${unit}`;
+        document.getElementById('verdictReading').className = `verdict-reading ${cls}`;
+        document.getElementById('verdictReading').innerHTML =
+            `${dir} ${glyph} <span style="font-variant-numeric:tabular-nums">${pct >= 0 ? '+' : ''}${pct.toFixed(0)}%</span>`;
+        document.getElementById('verdictDetail').innerHTML =
+            `${y[n - half]}&ndash;${y[n - 1]} averaged <strong>${fmt(m2)}</strong> ${unit}/yr against ` +
+            `<strong>${fmt(m1)}</strong> in ${y[0]}&ndash;${y[half - 1]}. ` +
+            `Linear trend ${slope >= 0 ? '+' : ''}${fmt(slope)} ${unit}/yr ` +
+            `(R&sup2; ${r2.toFixed(2)}${r2 < 0.3 ? ' — weak fit, treat as noisy' : ''}).`;
+    }
 
     function renderChart() {
+        // Canvas is permanently laid out (absolute-positioned in a fixed-height
+        // wrapper), so Chart.js can be instantiated synchronously.
+        document.getElementById('chartEmpty').style.display = 'none';
         const ctx = document.getElementById('comparisonChart').getContext('2d');
         if (chart) chart.destroy();
-        const showTrend = document.getElementById('showTrend').checked;
-        const showPhases = document.getElementById('showPhases').checked;
 
-        const annotations = showPhases ? HISTORICAL_PHASES.filter(p => p.start <= currentLabels[currentLabels.length-1] && p.end >= currentLabels[0]).map(p => {
-            const s = currentLabels.indexOf(p.start), e = currentLabels.indexOf(p.end);
-            return {
-                type: 'box', xMin: s === -1 ? -0.5 : s - 0.5, xMax: e === -1 ? currentLabels.length - 0.5 : e + 0.5,
-                backgroundColor: p.color, borderWidth: 0,
-                label: { display: true, content: p.label, position: 'start', color: '#94a3b8', font: { size: 10, weight: 'bold' }, yAdjust: 10 }
-            };
-        }) : [];
-
-        const avg = currentCounts.reduce((a, b) => a + b, 0) / currentCounts.length;
-        const maxDist = Math.max(...currentCounts.map(c => Math.abs(c - avg))) || 1;
-        const barColors = currentCounts.map(c => `hsl(${60 - ((c - avg) / maxDist * 60)}, 75%, 50%)`);
+        const showTrend   = document.getElementById('showTrend').checked;
+        const annotations = buildAnnotations();
+        const { bg: barColors, hover: barHoverColors } = computeBarColours();
+        currentTrend = getMovingAverage(currentCounts);
+        renderLegend();
 
         chart = new Chart(ctx, {
-            data: { 
-                labels: currentLabels, 
+            data: {
+                labels: currentLabels,
                 datasets: [
-                    { type: 'bar', label: 'Event Density', data: currentCounts, backgroundColor: barColors, borderRadius: 4, barPercentage: 0.9, order: 2 },
-                    { 
-                        type: 'line', label: 'Trend', data: getMovingAverage(currentCounts), 
-                        borderColor: '#f1f5f9', borderWidth: 2, pointRadius: 0, tension: 0.4, order: 1, hidden: !showTrend 
+                    {
+                        type: 'bar',
+                        label: metricMode() === 'deaths' ? 'Est. Deaths' : 'Event Density',
+                        data: toDisplay(currentCounts),
+                        backgroundColor: barColors,
+                        hoverBackgroundColor: barHoverColors,
+                        hoverBorderColor: 'rgba(28, 25, 23, 0.45)',
+                        hoverBorderWidth: 1,
+                        borderRadius: 1,
+                        barPercentage: 0.86,
+                        order: 2
+                    },
+                    {
+                        type: 'line',
+                        label: 'Trend',
+                        data: toDisplay(currentTrend),
+                        borderColor: 'rgba(28, 25, 23, 0.8)',
+                        borderWidth: 2.25,
+                        borderCapStyle: 'round',
+                        pointRadius: 0,
+                        pointHoverRadius: 4.5,
+                        pointHoverBackgroundColor: '#9f1d20',
+                        pointHoverBorderColor: '#ffffff',
+                        pointHoverBorderWidth: 1.5,
+                        tension: 0.45,
+                        order: 1,
+                        hidden: !showTrend
                     }
-                ] 
+                ]
             },
-            options: { 
-                responsive: true, maintainAspectRatio: false,
-                onClick: (e, i) => { if(i.length) showYear(currentLabels[i[0].index]); },
-                scales: { 
-                    y: { beginAtZero: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }, 
-                    x: { grid: { display: false }, ticks: { color: '#94a3b8' } } 
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                // Bars sweep in left→right on first render; stagger is capped so
+                // large ranges (100+ years) finish in under half a second.
+                animation: {
+                    duration: 650,
+                    easing: 'easeOutQuart',
+                    delay: ctx =>
+                        ctx.type === 'data' && ctx.mode === 'default' && ctx.datasetIndex === 0
+                            ? ctx.dataIndex * Math.min(14, 420 / currentLabels.length)
+                            : 0
                 },
-                plugins: { legend: { labels: { color: '#f1f5f9' } }, annotation: { annotations: annotations } }
+                transitions: {
+                    active: { animation: { duration: 160, easing: 'easeOutCubic' } }
+                },
+                // Hovering anywhere in a year's column highlights it — no need to
+                // hit the bar itself; tooltip shows incidents and trend together.
+                interaction: { mode: 'index', intersect: false },
+                onClick: (e, items) => {
+                    if (items.length) showYear(currentLabels[items[0].index]);
+                },
+                onHover: (e, items) => {
+                    e.native.target.style.cursor = items.length ? 'pointer' : 'default';
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        beginAtZero: true,
+                        grid: { color: '#f2f0eb' },
+                        // In deaths mode the axis holds √-transformed values —
+                        // replace auto ticks with √-positions of round numbers
+                        // so labels read as real tolls (10k, 100k, 1M…).
+                        afterBuildTicks: axis => {
+                            if (!isDeaths()) return;
+                            const maxRaw = Math.max(...currentCounts, 1);
+                            const nice = [];
+                            for (let p = 1; p <= 9; p++)
+                                for (const b of [1, 2, 5]) {
+                                    const v = b * 10 ** p;
+                                    if (v <= maxRaw * 1.1) nice.push(v);
+                                }
+                            nice.sort((a, b) => a - b);
+                            const step = Math.max(1, Math.ceil(nice.length / 7));
+                            const kept = nice.filter((_, i) => (nice.length - 1 - i) % step === 0);
+                            axis.ticks = [{ value: 0 }, ...kept.map(v => ({ value: Math.sqrt(v) }))];
+                        },
+                        ticks: {
+                            color: '#a8a29e',
+                            font: { family: 'IBM Plex Mono', size: 10 },
+                            callback: v => fmtBig(isDeaths() ? Math.round(v * v) : v)
+                        },
+                        border: { display: false }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: {
+                            color: '#a8a29e',
+                            font: { family: 'IBM Plex Mono', size: 10 },
+                            maxTicksLimit: 25
+                        },
+                        border: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#57534e',
+                            font: { family: 'Archivo', size: 11 },
+                            boxWidth: 12, boxHeight: 12
+                        }
+                    },
+                    annotation: { annotations },
+                    tooltip: {
+                        backgroundColor: '#ffffff',
+                        borderColor: '#d6d2ca',
+                        borderWidth: 1,
+                        titleColor: '#1c1917',
+                        bodyColor: '#57534e',
+                        titleFont: { family: 'Archivo', weight: '600', size: 12 },
+                        bodyFont:  { family: 'IBM Plex Mono', size: 11 },
+                        padding: 12,
+                        displayColors: false,
+                        callbacks: {
+                            title: items => `Year ${items[0].label}`,
+                            // Chart data may be √-transformed — read raw arrays.
+                            label: item => {
+                                const raw = item.datasetIndex === 0
+                                    ? currentCounts[item.dataIndex]
+                                    : currentTrend[item.dataIndex];
+                                const name = item.datasetIndex === 0
+                                    ? (isDeaths() ? 'Est. deaths' : 'Incidents') : 'Trend';
+                                return `${name}: ${Math.round(+raw).toLocaleString()}`;
+                            }
+                        }
+                    }
+                }
             }
         });
     }
 
-    function showYear(year) {
-        const events = globalStore[year];
-        if (!events || events.length === 0) return;
-        document.getElementById('timelineSection').style.display = 'block';
-        document.getElementById('focusYear').innerText = `${year}: Historical Density Events`;
-        document.getElementById('eventList').innerHTML = events.map(e => `
-            <div class="event-card"><span class="context-tag">${e.context}</span>${e.body}</div>`).join('');
-        document.getElementById('timelineSection').scrollIntoView({ behavior: 'smooth' });
+    function escapeHtml(s) {
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    const CLASS_LABELS = { all: '', human: ' · human', natural: ' · non-human' };
+
+    // Ledger ordering: page order, deadliest first, or grouped by class
+    // (natural → mixed → human, chronological within each group).
+    function sortLedger(evts) {
+        const mode = document.getElementById('ledgerSort').value;
+        if (mode === 'chrono') return evts;
+        const arr = evts.map((e, i) => ({ ...e, _i: i }));
+        if (mode === 'toll') {
+            arr.sort((a, b) => (b.toll || 0) - (a.toll || 0) || a._i - b._i);
+        } else {
+            const rank = { natural: 0, both: 1, human: 2 };
+            arr.sort((a, b) => rank[a.type] - rank[b.type] || a._i - b._i);
+        }
+        return arr;
+    }
+
+    function showYear(year, scroll = true) {
+        const events = sortLedger(getFilteredEvents(year));
+        if (events.length === 0) return;
+        focusedYear = year;
+
+        const section = document.getElementById('timelineSection');
+        section.classList.add('visible');
+        document.getElementById('focusYear').textContent = year;
+
+        // Overarching historical phase(s) this year falls within, for context.
+        const phases = HISTORICAL_PHASES.filter(p => year >= p.start && year <= p.end);
+        document.getElementById('focusPhases').innerHTML = phases.map(p =>
+            `<span class="phase-tag">${escapeHtml(p.label)} ${p.start}&ndash;${p.end}</span>`
+        ).join('');
+
+        const mode = document.getElementById('eventClass').value;
+        document.getElementById('eventsCount').textContent =
+            `${events.length} incidents${CLASS_LABELS[mode]}`;
+        document.getElementById('eventList').innerHTML = events.map((e, i) => {
+            // Flag natural-cause rows so they stand out when viewing all classes.
+            const marker = e.type === 'natural' ? 'NAT' : e.type === 'both' ? 'MIX' : '';
+            return `
+            <div class="ledger-row">
+                <div class="ledger-no">${String(i + 1).padStart(3, '0')}${marker ? `<span class="ledger-class">${marker}</span>` : ''}</div>
+                <div class="ledger-text">
+                    ${e.context ? `<div class="ledger-context">${escapeHtml(e.context)}</div>` : ''}
+                    <div class="ledger-body">${escapeHtml(e.body)}</div>
+                    ${e.toll ? `<div class="ledger-toll">&asymp; ${e.toll.toLocaleString()} DEAD${e.cum ? ' · CUMULATIVE' : ''}</div>` : ''}
+                </div>
+            </div>`;
+        }).join('');
+
+        if (scroll) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function exportToCSV() {
+        const trend = getMovingAverage(currentCounts);
+        let csv = 'data:text/csv;charset=utf-8,Year,Event_Density,Stress_Trend\n';
+        currentLabels.forEach((y, i) => { csv += `${y},${currentCounts[i]},${trend[i]}\n`; });
+        downloadFile(encodeURI(csv), 'nedi_summary.csv');
+    }
+
+    function exportAllData() {
+        const uri = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(globalStore, null, 2));
+        downloadFile(uri, 'nedi_archive.json');
+    }
+
+    function downloadFile(uri, filename) {
+        const a = document.createElement('a');
+        a.href = uri; a.download = filename;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
     }
 </script>
 </body>
